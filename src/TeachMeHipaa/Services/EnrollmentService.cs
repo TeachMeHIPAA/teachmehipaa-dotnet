@@ -45,7 +45,7 @@ public sealed class EnrollmentService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> BatchByFilterAsync(
         EnrollmentBatchByFilterOptions options,
@@ -57,7 +57,7 @@ public sealed class EnrollmentService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/enrollments:batch")
             {
                 OrganizationScoped = true,
@@ -66,7 +66,6 @@ public sealed class EnrollmentService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.EnrollmentBatchByFilterOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 
@@ -137,7 +136,7 @@ public sealed class EnrollmentService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> ExportAsync(
         EnrollmentExportOptions options,
@@ -149,7 +148,7 @@ public sealed class EnrollmentService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/enrollments:export")
             {
                 OrganizationScoped = true,
@@ -158,7 +157,6 @@ public sealed class EnrollmentService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.EnrollmentExportOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 
@@ -227,7 +225,7 @@ public sealed class EnrollmentService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public async Task<Operation> ImportAsync(
         EnrollmentImportOptions options,
@@ -245,7 +243,7 @@ public sealed class EnrollmentService
         }
 
         var fileContents = await options.File.ReadAsync("file.csv", nameof(options), cancellationToken).ConfigureAwait(false);
-        return await _requestor.RequestAsync(
+        return await _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/enrollments:import")
             {
                 OrganizationScoped = true,
@@ -256,7 +254,6 @@ public sealed class EnrollmentService
                     MultipartPart.Json("options", (options.Options ?? new()) with { ValidateOnly = false }, TeachMeHipaaJsonContext.Default.ImportOptions)),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken).ConfigureAwait(false);
     }
 

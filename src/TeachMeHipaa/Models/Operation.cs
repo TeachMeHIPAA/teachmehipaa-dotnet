@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 namespace TeachMeHipaa;
 
 /// <summary>The API's <c>Operation</c> object.</summary>
-public sealed record Operation : TeachMeHipaaEntity
+public sealed partial record Operation : TeachMeHipaaEntity
 {
     /// <summary>Unique identifier for the operation.</summary>
     [JsonPropertyName("name")]

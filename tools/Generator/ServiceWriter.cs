@@ -712,8 +712,12 @@ internal sealed partial class ServiceWriter
         var response = method.Response;
         switch (response.Kind)
         {
-            case "model":
             case "operation":
+                // Operation's hand-written partial polls through the requestor it was read with.
+                return TypeModel.Name(response.Type) == "Operation"
+                    ? ("Operation", new Call("RequestOperationAsync", []))
+                    : throw new GeneratorException($"{method.OperationId}: an operation response that isn't an Operation");
+            case "model":
                 var type = _model.Type(TypeModel.Name(response.Type));
                 if (type.Kind is not ("object" or "union"))
                 {
@@ -749,6 +753,7 @@ internal sealed partial class ServiceWriter
         "writeResult" => $"The <see cref=\"{returnType}\"/>, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set; <c>Created</c> is true when this call created it (201) and false when it already existed (200).",
         "empty" => "What the API said about the response: status, headers and request id.",
         "binary" => "The file's bytes, content type and file name.",
+        "operation" => "The <see cref=\"Operation\"/>, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set. Most are done when returned; <see cref=\"Operation.WaitAsync\"/> polls until one is.",
         _ => $"The <see cref=\"{returnType}\"/>, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set.",
     };
 

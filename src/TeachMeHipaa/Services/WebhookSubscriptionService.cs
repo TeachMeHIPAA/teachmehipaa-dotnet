@@ -171,7 +171,7 @@ public sealed class WebhookSubscriptionService
     /// <param name="subscriptionId">The webhook subscription id.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> RedriveAsync(
         string subscriptionId,
@@ -183,7 +183,7 @@ public sealed class WebhookSubscriptionService
             throw new ArgumentException("A subscriptionId is required.", nameof(subscriptionId));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, $"/webhook-subscriptions/{Uri.EscapeDataString(subscriptionId)}:redrive")
             {
                 OrganizationScoped = true,
@@ -191,7 +191,6 @@ public sealed class WebhookSubscriptionService
                 IdempotencyKeyRequired = true,
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 
@@ -200,7 +199,7 @@ public sealed class WebhookSubscriptionService
     /// <param name="subscriptionId">The webhook subscription id.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> TestAsync(
         string subscriptionId,
@@ -212,7 +211,7 @@ public sealed class WebhookSubscriptionService
             throw new ArgumentException("A subscriptionId is required.", nameof(subscriptionId));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, $"/webhook-subscriptions/{Uri.EscapeDataString(subscriptionId)}:test")
             {
                 OrganizationScoped = true,
@@ -220,7 +219,6 @@ public sealed class WebhookSubscriptionService
                 IdempotencyKeyRequired = true,
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 

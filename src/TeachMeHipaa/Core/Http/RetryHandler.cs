@@ -28,10 +28,6 @@ internal sealed class RetryHandler(RetryPolicy policy, int maxRetries, TimeProvi
     private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(60);
 
-#if !NET6_0_OR_GREATER
-    private static readonly Random Jitter = new();
-#endif
-
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var retries = RequestProperties.RetrySafe.Get(request) == true
@@ -90,19 +86,7 @@ internal sealed class RetryHandler(RetryPolicy policy, int maxRetries, TimeProvi
     private static TimeSpan Backoff(int retry)
     {
         var ceiling = Math.Min(InitialDelay.TotalSeconds * Math.Pow(2, retry - 1), MaxDelay.TotalSeconds);
-        var seconds = Math.Max(InitialDelay.TotalSeconds, ceiling * (0.5 + (NextJitter() * 0.5)));
+        var seconds = Math.Max(InitialDelay.TotalSeconds, ceiling * (0.5 + (Jitter.Next() * 0.5)));
         return TimeSpan.FromSeconds(seconds);
     }
-
-#if NET6_0_OR_GREATER
-    private static double NextJitter() => Random.Shared.NextDouble();
-#else
-    private static double NextJitter()
-    {
-        lock (Jitter)
-        {
-            return Jitter.NextDouble();
-        }
-    }
-#endif
 }

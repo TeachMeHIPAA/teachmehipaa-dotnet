@@ -71,7 +71,7 @@ public sealed class CertificateService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> ExportAsync(
         CertificateExportOptions options,
@@ -83,7 +83,7 @@ public sealed class CertificateService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/certificates:export")
             {
                 OrganizationScoped = true,
@@ -92,7 +92,6 @@ public sealed class CertificateService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.CertificateExportOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 

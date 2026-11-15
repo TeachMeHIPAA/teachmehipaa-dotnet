@@ -15,7 +15,7 @@ public sealed class OperationService
     /// <param name="operationId">The server-minted opaque operation id.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> GetAsync(
         string operationId,
@@ -27,14 +27,13 @@ public sealed class OperationService
             throw new ArgumentException("A operationId is required.", nameof(operationId));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Get, $"/operations/{Uri.EscapeDataString(operationId)}")
             {
                 OrganizationScoped = true,
                 RetrySafe = true,
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 }

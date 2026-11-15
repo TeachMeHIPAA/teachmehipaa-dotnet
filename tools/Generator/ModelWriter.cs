@@ -12,11 +12,20 @@ internal sealed class ModelWriter(TypeModel model)
     // Members every record already has, which a generated property would hide.
     private static readonly HashSet<string> ReservedProperties = ["ExtensionData", "LastResponse", "EqualityContract"];
 
+    // Models a hand-written partial in src/TeachMeHipaa/Extensions extends,
+    // outside the directories the generator owns.
+    private static readonly HashSet<string> ExtendedModels = new(StringComparer.Ordinal) { "Operation" };
+
     // Members every open enum already has.
     private static readonly HashSet<string> ReservedEnumValues = ["Value", "ToString", "Equals", "GetHashCode", "GetType"];
 
     public IEnumerable<(string Name, string Contents)> Files()
     {
+        if (ExtendedModels.FirstOrDefault(name => !model.Types.TryGetValue(name, out var type) || type.Kind != "object") is { } missing)
+        {
+            throw new GeneratorException($"ExtendedModels names {missing}, which the IR no longer has as an object");
+        }
+
         foreach (var type in model.Models)
         {
             yield return ($"{type.Name}.cs", type.Kind switch
@@ -132,7 +141,7 @@ internal sealed class ModelWriter(TypeModel model)
             code.Line($"/// <remarks>One kind of <see cref=\"{union}\"/>.</remarks>");
         }
 
-        code.Open($"public sealed record {type.Name} : {baseType}");
+        code.Open($"public sealed {(ExtendedModels.Contains(type.Name) ? "partial " : "")}record {type.Name} : {baseType}");
         CheckUnique(type.Name, fields.Select(field => Property(field.Name, type.Name)));
         // Fields every member of the union shares live on the union's base record.
         foreach (var field in fields.Where(field => !shared.Contains(field.Name)))

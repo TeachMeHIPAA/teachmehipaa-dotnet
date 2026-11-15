@@ -15,7 +15,7 @@ public sealed class LearnerService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> BatchUpsertAsync(
         LearnerBatchUpsertOptions options,
@@ -27,7 +27,7 @@ public sealed class LearnerService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/learners:batchUpsert")
             {
                 OrganizationScoped = true,
@@ -36,7 +36,6 @@ public sealed class LearnerService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerBatchUpsertOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 
@@ -107,7 +106,7 @@ public sealed class LearnerService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Most are done when returned; <see cref="Operation.WaitAsync"/> polls until one is.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Operation> ExportAsync(
         LearnerExportOptions options,
@@ -119,7 +118,7 @@ public sealed class LearnerService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        return _requestor.RequestOperationAsync(
             new ApiRequest(HttpMethod.Post, "/learners:export")
             {
                 OrganizationScoped = true,
@@ -128,7 +127,6 @@ public sealed class LearnerService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerExportOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Operation,
             cancellationToken);
     }
 

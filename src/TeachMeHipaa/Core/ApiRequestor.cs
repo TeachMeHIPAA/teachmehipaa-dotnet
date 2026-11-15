@@ -39,6 +39,20 @@ internal sealed class ApiRequestor
     }
 
     /// <summary>
+    /// Sends a call whose success response is an <see cref="Operation"/>,
+    /// bound to this requestor so that <see cref="Operation.WaitAsync"/> can poll it.
+    /// </summary>
+    public async Task<Operation> RequestOperationAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        CancellationToken cancellationToken)
+    {
+        var operation = await RequestAsync(request, requestOptions, TeachMeHipaaJsonContext.Default.Operation, cancellationToken).ConfigureAwait(false);
+        operation.Requestor = this;
+        return operation;
+    }
+
+    /// <summary>
     /// Sends a retrieve with <see cref="ApiRequest.IfNoneMatch"/>: a 304 means
     /// the caller's copy is current, so it comes back without an object.
     /// </summary>
