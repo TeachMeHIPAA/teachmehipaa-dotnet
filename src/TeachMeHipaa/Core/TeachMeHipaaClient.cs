@@ -39,12 +39,11 @@ public sealed partial class TeachMeHipaaClient
         var config = ClientConfiguration.From(options);
 
         transport ??= TransportChecks.Transport(options.HttpClient, options.HttpMessageHandler);
+        transport = new TimeoutHandler(config.Timeout, config.TimeProvider) { InnerHandler = transport };
         if (config.Logger is not null)
         {
             transport = new LoggingHandler(config.Logger, config.TimeProvider) { InnerHandler = transport };
         }
-
-        transport = new TimeoutHandler(config.Timeout, config.TimeProvider) { InnerHandler = transport };
 
         var api = new RetryHandler(RetryPolicy.Api, config.MaxRetries, config.TimeProvider) { InnerHandler = transport };
         // The token endpoint is called through the same transport but not

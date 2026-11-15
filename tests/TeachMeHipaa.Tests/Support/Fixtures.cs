@@ -24,7 +24,7 @@ public static class Fixtures
     public const string LearnerRoute = $"GET /v1/organizations/{OrgId}/learners/{LearnerId}";
 
     /// <summary><c>dev#/components/schemas/ClientCredentialsTokenResponse</c>, as in api-sdk-surface.md §2.1.</summary>
-    public static ScriptedReply TokenReply(string accessToken = "jwt-1", int expiresIn = 900) => new()
+    public static ScriptedReply TokenReply(string accessToken = "access-token-1", int expiresIn = 900) => new()
     {
         Json = $$"""
             {"access_token":"{{accessToken}}","token_type":"Bearer","expires_in":{{expiresIn}},"scope":"learners:read learners:write"}

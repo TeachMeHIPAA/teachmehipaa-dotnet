@@ -27,6 +27,13 @@ internal static class RequestProperties
     /// arrive and the caller reads the body, so nothing below buffers it.
     /// </summary>
     public static readonly RequestProperty<bool> StreamResponse = new("TeachMeHipaa.StreamResponse");
+
+    /// <summary>
+    /// The retries one call has used, shared by every copy of its request so
+    /// that <see cref="AuthenticationHandler"/>'s replay continues the count
+    /// instead of starting a new one.
+    /// </summary>
+    public static readonly RequestReference<RetryBudget> RetryBudget = new("TeachMeHipaa.RetryBudget");
 }
 
 internal sealed class RequestProperty<T>(string name)
@@ -44,5 +51,27 @@ internal sealed class RequestProperty<T>(string name)
 
     public T? Get(HttpRequestMessage request) =>
         request.Properties.TryGetValue(name, out var value) ? (T?)value : null;
+#endif
+}
+
+/// <summary>
+/// A per-call object on the request. Copies of a request share the same
+/// instance, so a handler that changes it is seen by every later attempt.
+/// </summary>
+internal sealed class RequestReference<T>(string name)
+    where T : class
+{
+#if NET5_0_OR_GREATER
+    private readonly HttpRequestOptionsKey<T> _key = new(name);
+
+    public void Set(HttpRequestMessage request, T value) => request.Options.Set(_key, value);
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Options.TryGetValue(_key, out var value) ? value : null;
+#else
+    public void Set(HttpRequestMessage request, T value) => request.Properties[name] = value;
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Properties.TryGetValue(name, out var value) ? value as T : null;
 #endif
 }

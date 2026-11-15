@@ -10,7 +10,7 @@ internal sealed class TokenEndpoint
     public TokenEndpoint(string baseUrl, string userAgent, TimeSpan timeout, TimeProvider timeProvider, HttpMessageHandler transport)
     {
         BaseUrl = baseUrl;
-        Uri = new Uri($"{baseUrl}/auth/token");
+        Uri = UriFor(baseUrl);
         UserAgent = userAgent;
         TimeProvider = timeProvider;
         Invoker = new HttpMessageInvoker(
@@ -28,4 +28,7 @@ internal sealed class TokenEndpoint
     public TimeProvider TimeProvider { get; }
 
     public HttpMessageInvoker Invoker { get; }
+
+    /// <summary>The token endpoint under <paramref name="baseUrl"/>, a base URL without a trailing slash.</summary>
+    public static Uri UriFor(string baseUrl) => new($"{baseUrl}/auth/token");
 }

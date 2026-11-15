@@ -462,7 +462,7 @@ In an ASP.NET Core minimal API, read the body from `request.Body` yourself
 rather than binding a parameter to it, and pass the path base, path and query
 string:
 
-<!-- sample: webhook-aspnetcore -->
+<!-- sample: delivery-aspnetcore -->
 ```csharp
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -500,7 +500,7 @@ app.MapPost("/webhooks/tmh", async (HttpRequest request) =>
 To test your handler, sign a payload the way TeachMeHIPAA does with
 `WebhookUtility.GenerateTestHeaders`:
 
-<!-- sample: webhook-test-headers -->
+<!-- sample: delivery-test-headers -->
 ```csharp
 const string payload = """
     {"eventId":"evt_01JD8M","eventType":"learner.certified","orgId":"org_acme",
@@ -719,7 +719,7 @@ Options are `init`-only, and the client copies them when it is created:
 | `MaxRetries`         | `2`                                         | Retries of a failed call that is safe to replay                                          |
 | `Timeout`            | 80 seconds                                  | How long to wait for each response, per attempt                                          |
 | `AppInfo`            | None                                        | Your software's name, version and URL, sent in the `User-Agent`                          |
-| `Logger`             | None: nothing is logged                     | An `ILogger` for one debug entry per response (see [Logging](#logging))                  |
+| `Logger`             | None: nothing is logged                     | An `ILogger` for one debug entry per attempt (see [Logging](#logging))                   |
 | `HttpClient`         | A connection pool shared by every client    | Sends requests, e.g. one from `IHttpClientFactory`; never disposed by the client          |
 | `HttpMessageHandler` | A connection pool shared by every client    | The innermost handler, e.g. with a proxy, a client certificate or a test fake; not both  |
 | `TimeProvider`       | `TimeProvider.System`                       | The clock for token expiry, backoff and timeouts, e.g. `FakeTimeProvider` in tests        |
@@ -736,7 +736,9 @@ The library writes nothing to the console or to disk and sends no telemetry.
 Give it an `ILogger` and it logs one `Debug` entry per HTTP response, token
 requests included, with the method, the path (without its query string,
 which can hold Learner emails), the status, the latency and the request id.
-Request and response bodies, headers and credentials are never logged
+A request that gets no response is logged too, before its exception is
+raised, with `ErrorKind` `connection` or `timeout` in place of the status and
+the request id you sent, if any. Request and response bodies, headers and credentials are never logged
 (ADR-0007), because they hold Learner details.
 
 <!-- sample: logging -->

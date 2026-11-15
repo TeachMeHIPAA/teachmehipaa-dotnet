@@ -113,7 +113,7 @@ public static class TeachMeHipaaOAuth
             ExchangeChecks.RequirePositive(options.Timeout, nameof(options.Timeout)),
             TimeProvider.System,
             ExchangeChecks.Transport(httpClient, httpMessageHandler: null));
-        var grant = await GrantExchange.SendAsync(endpoint, basicCredentials, form, CodeExchangeGuidance, cancellationToken).ConfigureAwait(false);
+        var grant = await GrantExchange.SendAsync(endpoint, basicCredentials, form, [], CodeExchangeGuidance, cancellationToken).ConfigureAwait(false);
         return grant.Tokens;
     }
 

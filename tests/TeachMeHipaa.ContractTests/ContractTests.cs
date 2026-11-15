@@ -228,7 +228,7 @@ public sealed class ContractTests : IDisposable
     }
 
     [Fact]
-    public async Task ListsAPartnersCustomerOrganizations()
+    public async Task ListsAPartnersOrganizations()
     {
         var page = await _client.Partners.Organizations.ListAsync(PartnerId, new PartnerOrganizationListOptions { Limit = 10 });
 

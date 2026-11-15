@@ -104,12 +104,10 @@ public sealed partial record Operation
                 throw TimedOut(latest, limit);
             }
 
-            var delay = PollDelay(least, poll);
-#if NET8_0_OR_GREATER
-            await Task.Delay(delay < remaining ? delay : remaining, time, cancellationToken).ConfigureAwait(false);
-#else
-            await time.Delay(delay < remaining ? delay : remaining, cancellationToken).ConfigureAwait(false);
-#endif
+            // Polls back off from the interval to 10 s apart, with jitter so
+            // that many waiters don't poll in step.
+            var delay = Backoff.Delay(least, MaxInterval, poll);
+            await TimeProviderDelay.Delay(delay < remaining ? delay : remaining, time, cancellationToken).ConfigureAwait(false);
             latest = await operations.GetAsync(operationId, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (latest.Done)
             {
@@ -173,7 +171,7 @@ public sealed partial record Operation
         if (SettledResponse() is not { ValueKind: JsonValueKind.Object } json
             || !json.TryGetProperty("_tag", out var tag) || tag.ValueKind != JsonValueKind.String)
         {
-            throw NotProduced("a webhook delivery result");
+            throw NotProduced("a Delivery result");
         }
 
         try
@@ -182,17 +180,8 @@ public sealed partial record Operation
         }
         catch (JsonException)
         {
-            throw NotProduced("a webhook delivery result");
+            throw NotProduced("a Delivery result");
         }
-    }
-
-    // The ceiling doubles from the interval up to 10 s (an interval longer
-    // than that stays as it is), and jitter picks 50-100 % of it so that many
-    // waiters don't poll in step. Nothing waits less than the interval.
-    private static TimeSpan PollDelay(TimeSpan interval, int poll)
-    {
-        var ceiling = Math.Min(interval.Ticks * Math.Pow(2, poll - 1), Math.Max(MaxInterval.Ticks, interval.Ticks));
-        return TimeSpan.FromTicks(Math.Max(interval.Ticks, (long)(ceiling * (0.5 + (Jitter.Next() * 0.5)))));
     }
 
     private static OperationTimeoutException TimedOut(Operation latest, TimeSpan timeout) =>

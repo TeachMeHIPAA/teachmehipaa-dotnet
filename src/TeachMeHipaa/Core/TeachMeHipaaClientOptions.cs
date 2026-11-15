@@ -70,11 +70,12 @@ public sealed class TeachMeHipaaClientOptions
 
     /// <summary>
     /// Opt-in request logging at debug level: method, path, status, latency
-    /// and request id. Bodies and credentials are never logged.
+    /// and request id, or the error kind for a connection error or timeout.
+    /// Bodies and credentials are never logged.
     /// </summary>
     public ILogger? Logger { get; init; }
 
-    /// <summary>Your integration's name, version and URL, sent in the User-Agent.</summary>
+    /// <summary>Your software's name, version and URL, sent in the User-Agent.</summary>
     public AppInfo? AppInfo { get; init; }
 
     /// <summary>The source of time for token expiry and timeouts. Defaults to <see cref="System.TimeProvider.System"/>.</summary>

@@ -26,21 +26,21 @@ public class AccessTokenReplayTests
     public async Task ReMintsTheAccessTokenOnceAndReplaysTheRequest()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, Unauthorized, LearnerReply());
         var client = NewClient(handler);
 
         var learner = await client.Learners.GetAsync(LearnerId);
 
         Assert.Equal(HttpStatusCode.OK, learner.LastResponse?.StatusCode);
-        Assert.Equal(["Bearer jwt-1", "Bearer jwt-2"], Authorizations(handler));
+        Assert.Equal(["Bearer access-token-1", "Bearer access-token-2"], Authorizations(handler));
     }
 
     [Fact]
     public async Task DoesNotCountTheReplayAsARetry()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, Unauthorized, LearnerReply());
         var client = NewClient(handler, maxRetries: 0);
 
@@ -54,20 +54,36 @@ public class AccessTokenReplayTests
     {
         var time = new TestTime();
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, Unauthorized, Unavailable, Unavailable, LearnerReply());
         var client = NewClient(handler, time: time);
 
         await time.RunAsync(client.Learners.GetAsync(LearnerId));
 
-        Assert.Equal(["Bearer jwt-1", "Bearer jwt-2", "Bearer jwt-2", "Bearer jwt-2"], Authorizations(handler));
+        Assert.Equal(["Bearer access-token-1", "Bearer access-token-2", "Bearer access-token-2", "Bearer access-token-2"], Authorizations(handler));
+    }
+
+    [Fact]
+    public async Task SharesOneRetryBudgetBetweenTheRequestAndItsReplay()
+    {
+        var time = new TestTime();
+        var handler = new FakeHttpMessageHandler()
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
+            .Script(LearnerRoute, Unavailable, Unauthorized, Unavailable, Unavailable, LearnerReply());
+        var client = NewClient(handler, time: time, maxRetries: 2);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() => time.RunAsync(client.Learners.GetAsync(LearnerId)));
+
+        // A 503 retry, the 401 replay, the second 503 retry, then the last 503 is raised.
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
+        Assert.Equal(4, handler.RequestsTo(LearnerRoute).Count);
     }
 
     [Fact]
     public async Task ReplaysOnlyOnceAndThenRaisesAnAuthenticationException()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, Unauthorized, Unauthorized);
         var client = NewClient(handler);
 
@@ -82,7 +98,7 @@ public class AccessTokenReplayTests
     public async Task DoesNotReplayA401WithAnotherCode()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"))
+            .Script(TokenRoute, TokenReply("access-token-1"))
             .Script(LearnerRoute, ProblemReply(401, """{"title":"Unauthorized","status":401,"code":"mfa_required"}"""));
         var client = NewClient(handler);
 
@@ -95,14 +111,14 @@ public class AccessTokenReplayTests
     public async Task ReplaysAPostWithTheSameIdempotencyKeyAndBody()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(CreateRoute, Unauthorized, new ScriptedReply { Status = HttpStatusCode.Created, Json = LearnerJson });
         var client = NewClient(handler);
 
         await client.Learners.CreateAsync(new LearnerCreateOptions { Email = "ana@example.com" });
 
         var attempts = handler.RequestsTo(CreateRoute);
-        Assert.Equal(["Bearer jwt-1", "Bearer jwt-2"], Authorizations(handler, CreateRoute));
+        Assert.Equal(["Bearer access-token-1", "Bearer access-token-2"], Authorizations(handler, CreateRoute));
         Assert.NotNull(attempts[0].Header("Idempotency-Key"));
         Assert.Equal(attempts[0].Header("Idempotency-Key"), attempts[1].Header("Idempotency-Key"));
         Assert.Equal("""{"email":"ana@example.com"}""", attempts[1].Body);
@@ -124,7 +140,7 @@ public class AccessTokenReplayTests
         }
 
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, UnauthorizedOnceBothArrive)
             .Script(LearnerRoute, UnauthorizedOnceBothArrive)
             .Script(LearnerRoute, LearnerReply(), LearnerReply());
@@ -133,14 +149,14 @@ public class AccessTokenReplayTests
         await Task.WhenAll(client.Learners.GetAsync(LearnerId), client.Learners.GetAsync(LearnerId));
 
         Assert.Equal(2, handler.RequestsTo(TokenRoute).Count);
-        Assert.Equal(["Bearer jwt-1", "Bearer jwt-1", "Bearer jwt-2", "Bearer jwt-2"], Authorizations(handler));
+        Assert.Equal(["Bearer access-token-1", "Bearer access-token-1", "Bearer access-token-2", "Bearer access-token-2"], Authorizations(handler));
     }
 
     [Fact]
     public async Task RaisesTheOAuthExceptionWhenTheReMintFails()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), new ScriptedReply
+            .Script(TokenRoute, TokenReply("access-token-1"), new ScriptedReply
             {
                 Status = HttpStatusCode.Unauthorized,
                 Json = """{"error":"invalid_client","error_description":"The API client was revoked."}""",
@@ -166,17 +182,41 @@ public class AccessTokenReplayTests
         _ = failure;
         var time = new TestTime();
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, reply, TokenReply("jwt-1"))
+            .Script(TokenRoute, reply, TokenReply("access-token-1"))
             .Script(LearnerRoute, LearnerReply());
         var client = NewClient(handler, time: time);
 
         await time.RunAsync(client.Learners.GetAsync(LearnerId));
 
         Assert.Equal(2, handler.RequestsTo(TokenRoute).Count);
-        Assert.Equal(["Bearer jwt-1"], Authorizations(handler));
+        Assert.Equal(["Bearer access-token-1"], Authorizations(handler));
         Assert.Equal(
             handler.RequestsTo(TokenRoute)[0].Body,
             handler.RequestsTo(TokenRoute)[1].Body);
+    }
+
+    [Fact]
+    public async Task RetriesARateLimitedMintAfterRetryAfter()
+    {
+        var time = new TestTime();
+        var handler = new FakeHttpMessageHandler()
+            .Script(
+                TokenRoute,
+                new ScriptedReply
+                {
+                    Status = (HttpStatusCode)429,
+                    Json = """{"error":"slow_down"}""",
+                    Headers = new Dictionary<string, string> { ["Retry-After"] = "3" },
+                },
+                TokenReply("access-token-1"))
+            .Script(LearnerRoute, LearnerReply());
+        var client = NewClient(handler, time: time);
+
+        await time.RunAsync(client.Learners.GetAsync(LearnerId));
+
+        Assert.Equal(2, handler.RequestsTo(TokenRoute).Count);
+        Assert.Equal([TimeSpan.FromSeconds(3)], time.Fired);
+        Assert.Equal(["Bearer access-token-1"], Authorizations(handler));
     }
 
     [Theory]

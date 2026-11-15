@@ -9,7 +9,7 @@ public class LearnerGetTests
     public async Task RetrievesALearnerWithAClientCredentialsAccessToken()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"))
+            .Script(TokenRoute, TokenReply("access-token-1"))
             .Script(LearnerRoute, LearnerReply());
         var client = NewClient(handler);
 
@@ -36,7 +36,7 @@ public class LearnerGetTests
         Assert.Equal("grant_type=client_credentials", token.Body);
 
         var get = Assert.Single(handler.RequestsTo(LearnerRoute));
-        Assert.Equal("Bearer jwt-1", get.Header("Authorization"));
+        Assert.Equal("Bearer access-token-1", get.Header("Authorization"));
         Assert.Equal("application/json", get.Header("Accept"));
     }
 }

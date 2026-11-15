@@ -24,12 +24,12 @@ public class AccessTokenTests
         var first = client.Learners.GetAsync(LearnerId);
         var second = client.Learners.GetAsync(LearnerId);
         await tokenRequested.Task;
-        releaseToken.SetResult(TokenReply("jwt-1"));
+        releaseToken.SetResult(TokenReply("access-token-1"));
         await Task.WhenAll(first, second);
 
         Assert.Single(handler.RequestsTo(TokenRoute));
         Assert.Equal(
-            ["Bearer jwt-1", "Bearer jwt-1"],
+            ["Bearer access-token-1", "Bearer access-token-1"],
             handler.RequestsTo(LearnerRoute).Select(request => request.Header("Authorization")));
     }
 
@@ -38,7 +38,7 @@ public class AccessTokenTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 15, 12, 0, 0, TimeSpan.Zero));
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1", expiresIn: 900), TokenReply("jwt-2", expiresIn: 900))
+            .Script(TokenRoute, TokenReply("access-token-1", expiresIn: 900), TokenReply("access-token-2", expiresIn: 900))
             .Script(LearnerRoute, LearnerReply(), LearnerReply(), LearnerReply());
         var client = NewClient(handler, time: time);
 
@@ -50,7 +50,7 @@ public class AccessTokenTests
 
         Assert.Equal(2, handler.RequestsTo(TokenRoute).Count);
         Assert.Equal(
-            ["Bearer jwt-1", "Bearer jwt-1", "Bearer jwt-2"],
+            ["Bearer access-token-1", "Bearer access-token-1", "Bearer access-token-2"],
             handler.RequestsTo(LearnerRoute).Select(request => request.Header("Authorization")));
     }
 
@@ -70,7 +70,7 @@ public class AccessTokenTests
                     },
                     Json = """{"error":"invalid_client","error_description":"Client authentication failed."}""",
                 },
-                TokenReply("jwt-2"))
+                TokenReply("access-token-2"))
             .Script(LearnerRoute, LearnerReply());
         var client = NewClient(handler);
 
@@ -82,7 +82,7 @@ public class AccessTokenTests
         Assert.Equal("Client authentication failed.", error.Detail);
         Assert.Equal("req-token-1", error.RequestId);
         Assert.Equal(HttpStatusCode.OK, learner.LastResponse?.StatusCode);
-        Assert.Equal("Bearer jwt-2", Assert.Single(handler.RequestsTo(LearnerRoute)).Header("Authorization"));
+        Assert.Equal("Bearer access-token-2", Assert.Single(handler.RequestsTo(LearnerRoute)).Header("Authorization"));
     }
 
     [Fact]

@@ -75,13 +75,18 @@ internal sealed record ClientConfiguration(
         // A Grant's Refresh token works only in its own Environment, and a
         // provider that refreshed against another one would hand the client
         // Access tokens its API refuses.
-        if (options.TokenProvider is PartnerGrantTokenProvider partnerGrant
-            && partnerGrant.BaseUrl.AbsoluteUri.TrimEnd('/') != baseUrl)
+        if (options.TokenProvider is ITokenEndpointBound bound)
         {
-            throw Checks.Invalid(
-                $"exchanges Refresh tokens at {partnerGrant.BaseUrl.AbsoluteUri.TrimEnd('/')}, but the client calls "
-                    + $"{baseUrl}; give both the same Environment and BaseUrl",
-                nameof(options.TokenProvider));
+            var tokenBaseUrl = bound.BaseUrl is { IsAbsoluteUri: true } absolute
+                ? OptionChecks.NormalizeBaseUrl(absolute)
+                : throw Checks.Invalid("must report an absolute BaseUrl", nameof(options.TokenProvider));
+            if (tokenBaseUrl != baseUrl)
+            {
+                throw Checks.Invalid(
+                    $"gets its tokens from {tokenBaseUrl}, but the client calls {baseUrl}; give both the same "
+                        + "Environment and BaseUrl",
+                    nameof(options.TokenProvider));
+            }
         }
 
         return options.TokenProvider!;

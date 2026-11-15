@@ -140,4 +140,39 @@ public class TokenProviderOptionTests
 
         Assert.NotNull(client);
     }
+
+    [Fact]
+    public void ACustomProviderBoundToAnotherBaseUrlIsRefused()
+    {
+        var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions
+        {
+            TokenProvider = new BoundTokenProvider(new Uri("https://api-teachmehipaa-dev.web.app/v1")),
+        }));
+
+        Assert.Equal(nameof(TeachMeHipaaClientOptions.TokenProvider), error.ParamName);
+        Assert.Contains("https://api-teachmehipaa-dev.web.app/v1", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACustomProviderBoundToTheClientsBaseUrlIsAccepted()
+    {
+        var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
+        {
+            TokenProvider = new BoundTokenProvider(new Uri("https://api.tme.so/v1/")),
+        });
+
+        Assert.NotNull(client);
+    }
+
+    /// <summary>A caller's own provider that opts into the Environment check.</summary>
+    private sealed class BoundTokenProvider(Uri baseUrl) : ITokenProvider, ITokenEndpointBound
+    {
+        public Uri BaseUrl { get; } = baseUrl;
+
+        public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken) => Task.FromResult("my-own-token");
+
+        public void Invalidate(string accessToken)
+        {
+        }
+    }
 }

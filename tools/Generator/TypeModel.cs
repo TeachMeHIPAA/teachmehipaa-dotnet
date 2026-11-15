@@ -13,7 +13,7 @@ internal sealed class TypeModel
         Types = ir.Types.ToDictionary(type => type.Name, StringComparer.Ordinal);
         Methods = ir.Resources.SelectMany(resource => resource.Methods.Select(method => (resource.Path, method))).ToList();
 
-        foreach (var (_, method) in Methods.Where(entry => entry.Method.Response.Kind == "page"))
+        foreach (var (_, method) in Methods.Where(entry => entry.Method.Response.Kind == IrResponseKind.Page))
         {
             var page = Type(Name(method.Response.Type));
             var item = method.Pagination?.ItemType
@@ -22,13 +22,13 @@ internal sealed class TypeModel
             PageItems[page.Name] = item;
         }
 
-        foreach (var union in ir.Types.Where(type => type.Kind == "union"))
+        foreach (var union in ir.Types.Where(type => type.Kind == IrTypeKind.Union))
         {
             var discriminator = Discriminator(union);
             foreach (var (tag, variant) in discriminator.Mapping.OrderBy(pair => pair.Key, StringComparer.Ordinal))
             {
                 AddMember(union, variant);
-                if (discriminator.Kind == "property")
+                if (discriminator.Kind == IrDiscriminatorKind.Property)
                 {
                     if (!Tags.TryAdd(variant, tag))
                     {
@@ -37,7 +37,7 @@ internal sealed class TypeModel
 
                     var field = Fields(Type(variant)).FirstOrDefault(f => f.Name == discriminator.Property)
                         ?? throw new GeneratorException($"{variant} lacks {union.Name}'s discriminator {discriminator.Property}");
-                    if (field.Type is not { Kind: "primitive", Type: "string" })
+                    if (field.Type is not { Kind: TypeRefKind.Primitive, Type: "string" })
                     {
                         throw new GeneratorException($"{variant}.{field.Name} is not a string discriminator");
                     }
@@ -68,7 +68,7 @@ internal sealed class TypeModel
         // A request body's own type is flattened into its method's options
         // class, so it gets no model unless something else refers to it.
         var referenced = ResponseTypes();
-        referenced.UnionWith(ir.Types.Where(type => type.Kind == "object").SelectMany(type => Fields(type).SelectMany(field => References(field.Type))));
+        referenced.UnionWith(ir.Types.Where(type => type.Kind == IrTypeKind.Object).SelectMany(type => Fields(type).SelectMany(field => References(field.Type))));
         referenced.UnionWith(UnionOf.Keys);
         BodyOnly.UnionWith(Methods.Select(entry => entry.Method.RequestBody?.Type).OfType<TypeRef>().Select(Name).Where(name => !referenced.Contains(name)));
     }
@@ -108,10 +108,10 @@ internal sealed class TypeModel
         Types.TryGetValue(name, out var type) ? type : throw new GeneratorException($"no IR type {name}");
 
     public static string Name(TypeRef? type) =>
-        type is { Kind: "ref", Name: { } name } ? name : throw new GeneratorException("expected a type reference");
+        type is { Kind: TypeRefKind.Ref, Name: { } name } ? name : throw new GeneratorException("expected a type reference");
 
     public static IReadOnlyList<IrField> Fields(IrType type) =>
-        type.Kind == "object" && type.Fields is { } fields ? fields : throw new GeneratorException($"{type.Name} is not an object");
+        type.Kind == IrTypeKind.Object && type.Fields is { } fields ? fields : throw new GeneratorException($"{type.Name} is not an object");
 
     public static IrDiscriminator Discriminator(IrType union) =>
         union.Discriminator ?? throw new GeneratorException($"{union.Name} has no discriminator");
@@ -120,7 +120,7 @@ internal sealed class TypeModel
     public string? Fallback(IrType union)
     {
         var discriminator = Discriminator(union);
-        if (discriminator.Kind == "presence")
+        if (discriminator.Kind == IrDiscriminatorKind.Presence)
         {
             return discriminator.Fallback;
         }
@@ -129,7 +129,7 @@ internal sealed class TypeModel
     }
 
     public bool GeneratesUnknown(IrType union) =>
-        Discriminator(union).Kind == "property" && union.Name != Ir.Events.Envelope;
+        Discriminator(union).Kind == IrDiscriminatorKind.Property && union.Name != Ir.Events.Envelope;
 
     /// <summary>
     /// The fields every member of <paramref name="union"/> declares the same
@@ -159,9 +159,9 @@ internal sealed class TypeModel
             .ToList();
     }
 
-    public bool IsEnum(TypeRef type) => type.Kind == "ref" && Type(Name(type)).Kind == "enum";
+    public bool IsEnum(TypeRef type) => type.Kind == TypeRefKind.Ref && Type(Name(type)).Kind == IrTypeKind.Enum;
 
-    public bool IsUnion(TypeRef type) => type.Kind == "ref" && Type(Name(type)).Kind == "union";
+    public bool IsUnion(TypeRef type) => type.Kind == TypeRefKind.Ref && Type(Name(type)).Kind == IrTypeKind.Union;
 
     /// <summary>Every type a response can contain, through fields and union members.</summary>
     public HashSet<string> ResponseTypes()
@@ -180,8 +180,8 @@ internal sealed class TypeModel
             var type = Type(name);
             var next = type.Kind switch
             {
-                "object" => Fields(type).SelectMany(field => References(field.Type)),
-                "union" => Discriminator(type).Mapping.Values.Concat(Fallback(type) is { } fallback && Types.ContainsKey(fallback) ? [fallback] : []),
+                IrTypeKind.Object => Fields(type).SelectMany(field => References(field.Type)),
+                IrTypeKind.Union => Discriminator(type).Mapping.Values.Concat(Fallback(type) is { } fallback && Types.ContainsKey(fallback) ? [fallback] : []),
                 _ => [],
             };
             foreach (var dependency in next)
@@ -195,15 +195,15 @@ internal sealed class TypeModel
 
     public static IEnumerable<string> References(TypeRef type) => type.Kind switch
     {
-        "ref" => [type.Name!],
-        "array" => References(type.Items!),
-        "map" => References(type.Values!),
+        TypeRefKind.Ref => [type.Name!],
+        TypeRefKind.Array => References(type.Items!),
+        TypeRefKind.Map => References(type.Values!),
         _ => [],
     };
 
     private void AddMember(IrType union, string member)
     {
-        if (Type(member).Kind != "object")
+        if (Type(member).Kind != IrTypeKind.Object)
         {
             throw new GeneratorException($"{union.Name} member {member} is not an object");
         }
@@ -222,7 +222,7 @@ internal sealed class TypeModel
         var shape = fields.Select(field => (field.Name, field.Required, field.Nullable)).Order().ToList();
         var items = fields.FirstOrDefault(field => field.Name == "items");
         if (!shape.SequenceEqual([("items", true, false), ("nextCursor", true, true)])
-            || items?.Type is not { Kind: "array", Items: { } listed }
+            || items?.Type is not { Kind: TypeRefKind.Array, Items: { } listed }
             || listed != item)
         {
             throw new GeneratorException($"page {page.Name} is not {{items, nextCursor}} of its item type");
@@ -241,7 +241,7 @@ internal sealed class TypeModel
             }
 
             var pinsHere = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-            foreach (var constraint in body.Constraints.Where(constraint => constraint.Kind == "const"))
+            foreach (var constraint in body.Constraints.Where(constraint => constraint.Kind == IrConstraintKind.Const))
             {
                 if (constraint.Path.Count != 2)
                 {
@@ -258,7 +258,7 @@ internal sealed class TypeModel
 
                 var pinned = Fields(Type(nested)).FirstOrDefault(f => f.Name == constraint.Path[1])
                     ?? throw new GeneratorException($"{method.OperationId}: {nested} has no field {constraint.Path[1]}");
-                if (pinned.Type.Kind != "primitive")
+                if (pinned.Type.Kind != TypeRefKind.Primitive)
                 {
                     throw new GeneratorException($"{method.OperationId}: pins a non-primitive {nested}.{pinned.Name}");
                 }

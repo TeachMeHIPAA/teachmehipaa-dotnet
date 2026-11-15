@@ -15,10 +15,7 @@ namespace TeachMeHipaa;
 public sealed class EventTail : IAsyncEnumerable<Event>
 {
     private readonly EventService _events;
-    private readonly EventType? _type;
-    private readonly long? _limit;
-    private readonly bool _follow;
-    private readonly TimeSpan _interval;
+    private readonly EventTailOptions _options;
     private readonly RequestOptions? _requestOptions;
     private readonly TimeProvider _timeProvider;
     private readonly CancellationToken _cancellationToken;
@@ -31,11 +28,8 @@ public sealed class EventTail : IAsyncEnumerable<Event>
         CancellationToken cancellationToken)
     {
         _events = events;
+        _options = options;
         LastEventId = options.After;
-        _type = options.Type;
-        _limit = options.Limit;
-        _follow = options.Follow;
-        _interval = options.Interval;
         _requestOptions = requestOptions;
         _timeProvider = timeProvider;
         _cancellationToken = cancellationToken;
@@ -56,23 +50,19 @@ public sealed class EventTail : IAsyncEnumerable<Event>
     {
         while (true)
         {
-            var list = new EventListOptions { After = LastEventId, Type = _type, Limit = _limit };
+            var list = new EventListOptions { After = LastEventId, Type = _options.Type, Limit = _options.Limit };
             await foreach (var item in _events.ListAutoPagingAsync(list, _requestOptions, cancellationToken).ConfigureAwait(false))
             {
                 LastEventId = item.EventId;
                 yield return item;
             }
 
-            if (!_follow)
+            if (!_options.Follow)
             {
                 yield break;
             }
 
-#if NET8_0_OR_GREATER
-            await Task.Delay(_interval, _timeProvider, cancellationToken).ConfigureAwait(false);
-#else
-            await _timeProvider.Delay(_interval, cancellationToken).ConfigureAwait(false);
-#endif
+            await TimeProviderDelay.Delay(_options.Interval, _timeProvider, cancellationToken).ConfigureAwait(false);
         }
     }
 }

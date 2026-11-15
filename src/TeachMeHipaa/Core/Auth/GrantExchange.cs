@@ -1,5 +1,3 @@
-using System.Net.Http.Headers;
-
 namespace TeachMeHipaa;
 
 /// <summary>What to tell the caller when an exchange fails in a way only they can fix.</summary>
@@ -22,16 +20,11 @@ internal sealed record GrantExchange(GrantTokens Tokens, DateTimeOffset Requeste
         TokenEndpoint endpoint,
         string basicCredentials,
         IEnumerable<KeyValuePair<string, string>> form,
+        IReadOnlyCollection<string> scopes,
         ExchangeGuidance guidance,
         CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint.Uri)
-        {
-            Content = new FormUrlEncodedContent(form),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicCredentials);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("User-Agent", endpoint.UserAgent);
+        using var request = TokenRequest.Create(endpoint.Uri, basicCredentials, endpoint.UserAgent, form, scopes);
 
         var requestedAt = endpoint.TimeProvider.GetUtcNow();
         HttpResponseMessage response;

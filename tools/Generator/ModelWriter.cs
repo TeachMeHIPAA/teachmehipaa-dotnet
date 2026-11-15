@@ -21,7 +21,7 @@ internal sealed class ModelWriter(TypeModel model)
 
     public IEnumerable<(string Name, string Contents)> Files()
     {
-        if (ExtendedModels.FirstOrDefault(name => !model.Types.TryGetValue(name, out var type) || type.Kind != "object") is { } missing)
+        if (ExtendedModels.FirstOrDefault(name => !model.Types.TryGetValue(name, out var type) || type.Kind != IrTypeKind.Object) is { } missing)
         {
             throw new GeneratorException($"ExtendedModels names {missing}, which the IR no longer has as an object");
         }
@@ -30,9 +30,9 @@ internal sealed class ModelWriter(TypeModel model)
         {
             yield return ($"{type.Name}.cs", type.Kind switch
             {
-                "object" => ObjectFile(type),
-                "enum" => EnumFile(type),
-                "union" => UnionFile(type),
+                IrTypeKind.Object => ObjectFile(type),
+                IrTypeKind.Enum => EnumFile(type),
+                IrTypeKind.Union => UnionFile(type),
                 _ => throw new GeneratorException($"{type.Name}: no rule for {type.Kind} types"),
             });
         }
@@ -46,7 +46,7 @@ internal sealed class ModelWriter(TypeModel model)
     /// <summary>The C# type of a model field (<paramref name="request"/>: of an options property).</summary>
     public string CsType(TypeRef type, bool request = false) => type.Kind switch
     {
-        "primitive" => type.Type switch
+        TypeRefKind.Primitive => type.Type switch
         {
             "string" => "string",
             "integer" => "long",
@@ -57,10 +57,10 @@ internal sealed class ModelWriter(TypeModel model)
             "binary" when request => "FileUpload",
             _ => throw new GeneratorException($"no {(request ? "request" : "model")} type for {type.Type}"),
         },
-        "ref" when model.PageItems.ContainsKey(type.Name!) => throw new GeneratorException($"{type.Name} is a page envelope"),
-        "ref" => model.Type(type.Name!).Name,
-        "array" => $"IReadOnlyList<{CsType(type.Items!, request)}>",
-        "map" when !request => $"IReadOnlyDictionary<string, {CsType(type.Values!)}>",
+        TypeRefKind.Ref when model.PageItems.ContainsKey(type.Name!) => throw new GeneratorException($"{type.Name} is a page envelope"),
+        TypeRefKind.Ref => model.Type(type.Name!).Name,
+        TypeRefKind.Array => $"IReadOnlyList<{CsType(type.Items!, request)}>",
+        TypeRefKind.Map when !request => $"IReadOnlyDictionary<string, {CsType(type.Values!)}>",
         _ => throw new GeneratorException($"no {(request ? "request" : "model")} type for {type.Kind}"),
     };
 
@@ -92,14 +92,14 @@ internal sealed class ModelWriter(TypeModel model)
 
         var initializer = type switch
         {
-            { Kind: "primitive", Type: "string" } => "string.Empty",
+            { Kind: TypeRefKind.Primitive, Type: "string" } => "string.Empty",
             // A file has no empty default; its options class takes it in the constructor.
-            { Kind: "primitive", Type: "binary" } => null,
-            { Kind: "array" } => "[]",
-            { Kind: "map" } => $"new Dictionary<string, {CsType(type.Values!)}>()",
+            { Kind: TypeRefKind.Primitive, Type: "binary" } => null,
+            { Kind: TypeRefKind.Array } => "[]",
+            { Kind: TypeRefKind.Map } => $"new Dictionary<string, {CsType(type.Values!)}>()",
             // A union is abstract; a missing one stays null, as the API never omits it.
-            { Kind: "ref" } when model.IsUnion(type) => "null!",
-            { Kind: "ref" } when !model.IsEnum(type) => "new()",
+            { Kind: TypeRefKind.Ref } when model.IsUnion(type) => "null!",
+            { Kind: TypeRefKind.Ref } when !model.IsEnum(type) => "new()",
             _ => null,
         };
         return initializer is null ? $"{csType} {name} {{ {accessors} }}" : $"{csType} {name} {{ {accessors} }} = {initializer};";
@@ -107,8 +107,8 @@ internal sealed class ModelWriter(TypeModel model)
 
     private bool IsValueType(TypeRef type) => type switch
     {
-        { Kind: "primitive", Type: "integer" or "number" or "boolean" or "dateTime" } => true,
-        { Kind: "ref" } => model.IsEnum(type),
+        { Kind: TypeRefKind.Primitive, Type: "integer" or "number" or "boolean" or "dateTime" } => true,
+        { Kind: TypeRefKind.Ref } => model.IsEnum(type),
         _ => false,
     };
 
@@ -255,7 +255,7 @@ internal sealed class ModelWriter(TypeModel model)
         code.Summary(Describe(union.Description, $"One of the API's kinds of <c>{union.Name}</c>."));
         code.Line("/// <remarks>");
         code.Line($"/// Known kinds: {string.Join(", ", members.Select(member => $"<see cref=\"{member}\"/>"))}.");
-        code.Line(discriminator.Kind == "property"
+        code.Line(discriminator.Kind == IrDiscriminatorKind.Property
             ? $"/// Chosen by <c>{discriminator.Property}</c>; any other value reads as <see cref=\"{fallback}\"/>."
             : fallback is null
                 ? "/// Chosen by which of their fields is present."
@@ -281,7 +281,7 @@ internal sealed class ModelWriter(TypeModel model)
         code.Open($"public override {union.Name}? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
         code.Line("using var document = JsonDocument.ParseValue(ref reader);");
         code.Line("var json = document.RootElement;");
-        if (discriminator.Kind == "property")
+        if (discriminator.Kind == IrDiscriminatorKind.Property)
         {
             var property = Code.Literal(discriminator.Property!);
             code.Line($"var tag = json.ValueKind == JsonValueKind.Object && json.TryGetProperty({property}, out var value) && value.ValueKind == JsonValueKind.String");

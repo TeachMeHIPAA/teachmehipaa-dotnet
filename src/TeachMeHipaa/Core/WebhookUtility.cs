@@ -162,11 +162,7 @@ public static class WebhookUtility
     {
         CheckSecret(secret);
         var signedPath = PathAndQuery(path);
-        // The platform's format: JavaScript's `Date.toISOString()`, always UTC
-        // with milliseconds.
-        var signedAt = (timestamp ?? DateTimeOffset.UtcNow)
-            .ToUniversalTime()
-            .ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+        var signedAt = Iso8601.Format(timestamp ?? DateTimeOffset.UtcNow);
         var bodyHash = Sha256Hex(body);
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -376,7 +376,7 @@ public class OperationTests
 
         var error = Assert.Throws<InvalidOperationException>(operation.GetDeliveryResult);
 
-        Assert.Equal($"Operation {OperationName} did not produce a webhook delivery result.", error.Message);
+        Assert.Equal($"Operation {OperationName} did not produce a Delivery result.", error.Message);
     }
 
     [Fact]

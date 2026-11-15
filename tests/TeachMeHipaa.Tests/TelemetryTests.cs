@@ -48,7 +48,7 @@ public class TelemetryTests
     public async Task LogsMethodPathStatusLatencyAndRequestIdButNoCredentialsOrBodies()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-secret-token"))
+            .Script(TokenRoute, TokenReply("access-token-secret-token"))
             .Script(LearnerRoute, LearnerReply(new Dictionary<string, string> { ["x-request-id"] = "req-7" }));
         var logger = new RecordingLogger();
         var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
@@ -72,11 +72,73 @@ public class TelemetryTests
         Assert.Equal("req-7", entry.State["RequestId"]);
         Assert.All(logger.Entries, logged =>
         {
-            Assert.DoesNotContain("jwt-secret-token", logged.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("access-token-secret-token", logged.Message, StringComparison.Ordinal);
             Assert.DoesNotContain(ClientSecret, logged.Message, StringComparison.Ordinal);
             Assert.DoesNotContain("ana@example.com", logged.Message, StringComparison.Ordinal);
         });
     }
+
+    [Fact]
+    public async Task LogsATimedOutRequestWithTheRequestIdItSentBeforeRaising()
+    {
+        var time = new TestTime();
+        var handler = new FakeHttpMessageHandler()
+            .Script(TokenRoute, TokenReply("access-token-secret"))
+            .Script(LearnerRoute, ScriptedReply.NeverAnswers);
+        var logger = new RecordingLogger();
+        var client = LoggingClient(handler, logger, time);
+
+        await Assert.ThrowsAsync<ApiTimeoutException>(() => time.RunAsync(client.Learners.GetAsync(
+            LearnerId,
+            new LearnerGetOptions { CourseId = "ana@example.com" },
+            new RequestOptions { RequestId = "acme-sync-42", Timeout = TimeSpan.FromSeconds(3) })));
+
+        var entry = logger.Entries[^1];
+        Assert.Equal(LogLevel.Debug, entry.Level);
+        Assert.Equal("GET", entry.State["Method"]);
+        Assert.Equal($"/v1/organizations/{OrgId}/learners/{LearnerId}", entry.State["Path"]);
+        Assert.Equal("timeout", entry.State["ErrorKind"]);
+        Assert.Equal(3000L, entry.State["LatencyMs"]);
+        Assert.Equal("acme-sync-42", entry.State["RequestId"]);
+        Assert.False(entry.State.ContainsKey("StatusCode"));
+        Assert.All(logger.Entries, logged =>
+        {
+            Assert.DoesNotContain("access-token-secret", logged.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("ana@example.com", logged.Message, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task LogsARequestThatCouldNotConnectBeforeRaising()
+    {
+        var time = new TestTime();
+        var handler = new FakeHttpMessageHandler()
+            .Script(TokenRoute, TokenReply())
+            .Script(LearnerRoute, new ScriptedReply { Throws = new HttpRequestException("Connection refused") });
+        var logger = new RecordingLogger();
+        var client = LoggingClient(handler, logger, time);
+
+        await Assert.ThrowsAsync<ApiConnectionException>(() => time.RunAsync(client.Learners.GetAsync(LearnerId)));
+
+        var entry = logger.Entries[^1];
+        Assert.Equal("GET", entry.State["Method"]);
+        Assert.Equal($"/v1/organizations/{OrgId}/learners/{LearnerId}", entry.State["Path"]);
+        Assert.Equal("connection", entry.State["ErrorKind"]);
+        Assert.IsType<long>(entry.State["LatencyMs"]);
+        Assert.Null(entry.State["RequestId"]);
+    }
+
+    private static TeachMeHipaaClient LoggingClient(FakeHttpMessageHandler handler, ILogger logger, TestTime time) =>
+        new(new TeachMeHipaaClientOptions
+        {
+            ClientId = ClientId,
+            ClientSecret = ClientSecret,
+            OrganizationId = OrgId,
+            HttpMessageHandler = handler,
+            Logger = logger,
+            TimeProvider = time,
+            MaxRetries = 0,
+        });
 
     private sealed class RecordingLogger : ILogger
     {

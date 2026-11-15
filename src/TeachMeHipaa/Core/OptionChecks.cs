@@ -27,7 +27,7 @@ internal sealed class OptionChecks(string owner)
         if (baseUrl is not null)
         {
             return baseUrl.IsAbsoluteUri && (baseUrl.Scheme == Uri.UriSchemeHttps || baseUrl.Scheme == Uri.UriSchemeHttp)
-                ? baseUrl.AbsoluteUri.TrimEnd('/')
+                ? NormalizeBaseUrl(baseUrl)
                 : throw Invalid("must be an absolute http or https URL", "BaseUrl");
         }
 
@@ -38,6 +38,9 @@ internal sealed class OptionChecks(string owner)
             _ => throw Invalid("must be Live or Sandbox", "Environment"),
         };
     }
+
+    /// <summary>The form base URLs are kept and compared in: absolute, without a trailing slash.</summary>
+    public static string NormalizeBaseUrl(Uri baseUrl) => baseUrl.AbsoluteUri.TrimEnd('/');
 
     public string[] ResolveScopes(IReadOnlyList<string>? scopes)
     {

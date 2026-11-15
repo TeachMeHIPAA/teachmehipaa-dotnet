@@ -50,8 +50,8 @@ public class ReadmeTests
         ["not-modified"] = NotModified,
         ["operations"] = Operations,
         ["files"] = Files,
-        ["webhook-aspnetcore"] = WebhookAspNetCore,
-        ["webhook-test-headers"] = WebhookTestHeaders,
+        ["delivery-aspnetcore"] = DeliveryAspNetCore,
+        ["delivery-test-headers"] = DeliveryTestHeaders,
         ["partner-consent"] = PartnerConsent,
         ["partner-grant"] = PartnerGrant,
         ["partner-organizations"] = PartnerOrganizations,
@@ -292,13 +292,13 @@ public class ReadmeTests
         Assert.Equal(pdf, File.ReadAllBytes("certificate-copy.pdf"));
     }
 
-    private static async Task WebhookAspNetCore(ReadmeHarness readme)
+    private static async Task DeliveryAspNetCore(ReadmeHarness readme)
     {
         // Signed for the path with its query string, as TeachMeHIPAA signs it.
         const string path = "/webhooks/tmh?attempt=1";
         var payload = LearnerCertifiedEvent("evt_01JD8M");
 
-        await ReadmeSamples.RunAsync("webhook-aspnetcore");
+        await ReadmeSamples.RunAsync("delivery-aspnetcore");
         await readme.App.StartAsync();
         using var http = readme.App.GetTestClient();
         var signed = await PostAsync(http, path, payload, WebhookUtility.GenerateTestHeaders(payload, ReadmeHarness.WebhookSecret, path));
@@ -323,16 +323,16 @@ public class ReadmeTests
         return (response.StatusCode, await response.Content.ReadAsStringAsync());
     }
 
-    private static async Task WebhookTestHeaders(ReadmeHarness readme)
+    private static async Task DeliveryTestHeaders(ReadmeHarness readme)
     {
-        await ReadmeSamples.RunAsync("webhook-test-headers");
+        await ReadmeSamples.RunAsync("delivery-test-headers");
 
         Assert.Equal(["learner.certified"], readme.Printed);
     }
 
     private static async Task PartnerConsent(ReadmeHarness readme)
     {
-        readme.Handler.Script(TokenRoute, GrantTokenReply("jwt-grant", RefreshToken1));
+        readme.Handler.Script(TokenRoute, GrantTokenReply("access-token-grant", RefreshToken1));
         var flow = new ConsentFlow(readme.Sessions, readme.Grants);
 
         var consentUrl = new Uri(flow.Start());
@@ -353,7 +353,7 @@ public class ReadmeTests
     {
         readme.Grants.RefreshTokens[OrgId] = RefreshToken1;
         readme.Handler
-            .Script(TokenRoute, GrantTokenReply("jwt-grant", RefreshToken2))
+            .Script(TokenRoute, GrantTokenReply("access-token-grant", RefreshToken2))
             .Script($"GET {Org}/learners", Page(LearnerJson));
 
         await ReadmeSamples.RunAsync("partner-grant");
@@ -361,7 +361,7 @@ public class ReadmeTests
         Assert.Equal(["1"], readme.Printed);
         Assert.Equal(RefreshToken2, readme.Grants.RefreshTokens[OrgId]);
         Assert.Contains($"refresh_token={Uri.EscapeDataString(RefreshToken1)}", readme.Handler.RequestsTo(TokenRoute)[0].Body, StringComparison.Ordinal);
-        Assert.Equal("Bearer jwt-grant", readme.Handler.RequestsTo($"GET {Org}/learners")[0].Header("Authorization"));
+        Assert.Equal("Bearer access-token-grant", readme.Handler.RequestsTo($"GET {Org}/learners")[0].Header("Authorization"));
     }
 
     private static async Task PartnerOrganizations(ReadmeHarness readme)

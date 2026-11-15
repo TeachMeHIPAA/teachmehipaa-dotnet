@@ -1,5 +1,3 @@
-using System.Net.Http.Headers;
-
 namespace TeachMeHipaa;
 
 /// <summary>An API client's id, secret and the Scopes to request.</summary>
@@ -23,7 +21,7 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         _config = config;
         _credentials = credentials;
         _transport = transport;
-        _tokenUri = new Uri($"{config.BaseUrl}/auth/token");
+        _tokenUri = TokenEndpoint.UriFor(config.BaseUrl);
         _basicCredentials = BasicCredentials.Encode(credentials.ClientId, credentials.ClientSecret);
         _cache = new AccessTokenCache(MintAsync, config.TimeProvider);
     }
@@ -34,20 +32,12 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
 
     private async Task<CachedToken> MintAsync(CancellationToken cancellationToken)
     {
-        var form = new List<KeyValuePair<string, string>> { new("grant_type", "client_credentials") };
-        // Omitting scope grants every Scope the API client holds.
-        if (_credentials.Scopes.Count > 0)
-        {
-            form.Add(new("scope", string.Join(" ", _credentials.Scopes)));
-        }
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, _tokenUri)
-        {
-            Content = new FormUrlEncodedContent(form),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", _basicCredentials);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
+        using var request = TokenRequest.Create(
+            _tokenUri,
+            _basicCredentials,
+            _config.UserAgent,
+            [new("grant_type", "client_credentials")],
+            _credentials.Scopes);
         RequestProperties.RetrySafe.Set(request, true);
 
         // Expiry counts from when the request left, so a slow response can't

@@ -11,7 +11,7 @@ public class ErrorTests
     private static async Task<TeachMeHipaaException> GetFailingWith(ScriptedReply reply)
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"), TokenReply("jwt-2"))
+            .Script(TokenRoute, TokenReply("access-token-1"), TokenReply("access-token-2"))
             .Script(LearnerRoute, reply, reply);
         var client = NewClient(handler, maxRetries: 0);
         return await Assert.ThrowsAnyAsync<TeachMeHipaaException>(() => client.Learners.GetAsync(LearnerId));

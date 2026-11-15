@@ -10,7 +10,7 @@ public class OrganizationBindingTests
     public async Task ResolvesTheOrganizationOnceAndReusesIt()
     {
         var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply("jwt-1"))
+            .Script(TokenRoute, TokenReply("access-token-1"))
             .Script(IntrospectionRoute, IntrospectionReply())
             .Script(LearnerRoute, LearnerReply(), LearnerReply());
         var client = NewClient(handler, organizationId: null);
@@ -18,7 +18,7 @@ public class OrganizationBindingTests
         await client.Learners.GetAsync(LearnerId);
         await client.Learners.GetAsync(LearnerId);
 
-        Assert.Equal("Bearer jwt-1", Assert.Single(handler.RequestsTo(IntrospectionRoute)).Header("Authorization"));
+        Assert.Equal("Bearer access-token-1", Assert.Single(handler.RequestsTo(IntrospectionRoute)).Header("Authorization"));
         Assert.Equal(2, handler.RequestsTo(LearnerRoute).Count);
     }
 

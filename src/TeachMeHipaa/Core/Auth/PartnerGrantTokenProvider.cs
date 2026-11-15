@@ -7,7 +7,7 @@ namespace TeachMeHipaa;
 /// token goes to the <see cref="ITokenStore"/> before its Access token is
 /// used, and an exchange is never retried (ADR-0004).
 /// </summary>
-public sealed class PartnerGrantTokenProvider : ITokenProvider
+public sealed class PartnerGrantTokenProvider : ITokenProvider, ITokenEndpointBound
 {
     private static readonly OptionChecks Checks = new(nameof(PartnerGrantTokenProviderOptions));
 
@@ -70,17 +70,12 @@ public sealed class PartnerGrantTokenProvider : ITokenProvider
 
     private async Task<CachedToken> MintAsync(CancellationToken cancellationToken)
     {
-        var form = new List<KeyValuePair<string, string>>
+        var form = new KeyValuePair<string, string>[]
         {
             new("grant_type", "refresh_token"),
             new("refresh_token", _latestRefreshToken ?? await LoadAsync(cancellationToken).ConfigureAwait(false)),
         };
-        if (_scopes.Length > 0)
-        {
-            form.Add(new("scope", string.Join(" ", _scopes)));
-        }
-
-        var grant = await GrantExchange.SendAsync(_endpoint, _basicCredentials, form, RefreshGuidance, cancellationToken).ConfigureAwait(false);
+        var grant = await GrantExchange.SendAsync(_endpoint, _basicCredentials, form, _scopes, RefreshGuidance, cancellationToken).ConfigureAwait(false);
         // The token just presented is superseded whatever happens next, so
         // this process must never present it again, even if the save fails.
         _latestRefreshToken = grant.Tokens.RefreshToken;

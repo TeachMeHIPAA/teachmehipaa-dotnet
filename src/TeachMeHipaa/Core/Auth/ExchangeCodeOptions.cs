@@ -27,6 +27,6 @@ public sealed class ExchangeCodeOptions
     /// <summary>How long to wait for the response. Defaults to 80 seconds.</summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(80);
 
-    /// <summary>Your integration's name, version and URL, sent in the User-Agent.</summary>
+    /// <summary>Your software's name, version and URL, sent in the User-Agent.</summary>
     public AppInfo? AppInfo { get; init; }
 }

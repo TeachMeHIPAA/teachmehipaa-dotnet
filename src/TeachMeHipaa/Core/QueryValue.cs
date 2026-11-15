@@ -8,5 +8,5 @@ internal static class QueryValue
     public static string? From(long? value) => value?.ToString(CultureInfo.InvariantCulture);
 
     public static string? From(DateTimeOffset? value) =>
-        value?.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+        value is { } timestamp ? Iso8601.Format(timestamp) : null;
 }

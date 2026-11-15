@@ -73,8 +73,8 @@ Generated from the Developer API document release `waggish-wombat`.
 - `Events.TailAsync` to read the Event log from a saved position, once or
   following new Events.
 - Opt-in debug logging through an `ILogger`, one entry per response with
-  method, path, status, latency and request id, never bodies, headers or
-  credentials; a `User-Agent` with your `AppInfo`; and a pluggable
+  method, path, status, latency and request id, and one per connection
+  error or timeout, never bodies, headers or credentials; a `User-Agent` with your `AppInfo`; and a pluggable
   `HttpClient` or `HttpMessageHandler`.
 - `net8.0` (trimmable, AOT-compatible) and `netstandard2.0` targets with
   nullable annotations. No telemetry and no disk writes.
