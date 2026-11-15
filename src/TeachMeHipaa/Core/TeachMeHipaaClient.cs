@@ -15,6 +15,12 @@ public sealed partial class TeachMeHipaaClient
     {
     }
 
+    /// <summary>
+    /// Verifies Deliveries and signs payloads for your own tests, the same as
+    /// <see cref="WebhookUtility"/>. Needs only the Signing secret.
+    /// </summary>
+    public TeachMeHipaaWebhooks Webhooks { get; } = TeachMeHipaaWebhooks.Instance;
+
     private static ApiRequestor CreateRequestor(TeachMeHipaaClientOptions options)
     {
         var config = ClientConfiguration.From(options);
