@@ -6,8 +6,9 @@ namespace TeachMeHipaa;
 /// <summary>
 /// Puts the current Access token on every API request. When the API answers
 /// 401 <c>unauthorized</c> (a token revoked mid-flight), it re-mints once and
-/// replays the request. It sits above retries, so the replay never uses one
-/// up; a 401 comes before the API acts, so replaying even a PATCH is safe.
+/// replays the request, unless the provider hands back the same token. It
+/// sits above retries, so the replay never uses one up; a 401 comes before
+/// the API acts, so replaying even a PATCH is safe.
 /// Public operations go out without a token, so none is minted for them.
 /// </summary>
 internal sealed class AuthenticationHandler(ITokenProvider tokenProvider) : DelegatingHandler
@@ -28,10 +29,17 @@ internal sealed class AuthenticationHandler(ITokenProvider tokenProvider) : Dele
             return response;
         }
 
-        response.Dispose();
         tokenProvider.Invalidate(accessToken);
-        accessToken = await tokenProvider.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
-        return await SendWithAsync(replay, accessToken, cancellationToken).ConfigureAwait(false);
+        var renewed = await tokenProvider.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+        // A provider that can't renew, such as a static token, hands back the
+        // same token, which the API would only refuse again.
+        if (renewed == accessToken)
+        {
+            return response;
+        }
+
+        response.Dispose();
+        return await SendWithAsync(replay, renewed, cancellationToken).ConfigureAwait(false);
     }
 
     private Task<HttpResponseMessage> SendWithAsync(ReplayableRequest replay, string accessToken, CancellationToken cancellationToken) =>

@@ -2,21 +2,22 @@ using Microsoft.Extensions.Logging;
 
 namespace TeachMeHipaa;
 
-/// <summary>The validated, copied settings a client runs with.</summary>
+/// <summary>
+/// The validated, copied settings a client runs with. Exactly one of
+/// <see cref="Credentials"/> and <see cref="TokenProvider"/> is set.
+/// </summary>
 internal sealed record ClientConfiguration(
-    string ClientId,
-    string ClientSecret,
+    ClientCredentials? Credentials,
+    ITokenProvider? TokenProvider,
     string BaseUrl,
     string? OrganizationId,
-    IReadOnlyList<string> Scopes,
     int MaxRetries,
     TimeSpan Timeout,
     string UserAgent,
     TimeProvider TimeProvider,
     ILogger? Logger)
 {
-    internal const string LiveBaseUrl = "https://api.tme.so/v1";
-    internal const string SandboxBaseUrl = "https://api-teachmehipaa-dev.web.app/v1";
+    private static readonly OptionChecks Checks = new(nameof(TeachMeHipaaClientOptions));
 
     public static ClientConfiguration From(TeachMeHipaaClientOptions options)
     {
@@ -25,68 +26,56 @@ internal sealed record ClientConfiguration(
             throw new ArgumentNullException(nameof(options));
         }
 
-        if (options.HttpClient is not null && options.HttpMessageHandler is not null)
-        {
-            throw Invalid("give HttpClient or HttpMessageHandler, not both", nameof(options.HttpClient));
-        }
-
+        var baseUrl = Checks.ResolveBaseUrl(options.Environment, options.BaseUrl);
         return new ClientConfiguration(
-            ClientId: RequireText(options.ClientId, nameof(options.ClientId)),
-            ClientSecret: RequireText(options.ClientSecret, nameof(options.ClientSecret)),
-            BaseUrl: ResolveBaseUrl(options.Environment, options.BaseUrl),
+            Credentials: options.TokenProvider is null
+                ? new ClientCredentials(
+                    Checks.RequireText(options.ClientId, nameof(options.ClientId)),
+                    Checks.RequireText(options.ClientSecret, nameof(options.ClientSecret)),
+                    Checks.ResolveScopes(options.Scopes))
+                : null,
+            TokenProvider: options.TokenProvider is null ? null : CheckTokenProvider(options, baseUrl),
+            BaseUrl: baseUrl,
             OrganizationId: options.OrganizationId is null
                 ? null
-                : RequireText(options.OrganizationId, nameof(options.OrganizationId)),
-            Scopes: ResolveScopes(options.Scopes),
+                : Checks.RequireText(options.OrganizationId, nameof(options.OrganizationId)),
             MaxRetries: options.MaxRetries >= 0
                 ? options.MaxRetries
-                : throw Invalid("must not be negative", nameof(options.MaxRetries)),
-            Timeout: options.Timeout > TimeSpan.Zero
-                ? options.Timeout
-                : throw Invalid("must be positive", nameof(options.Timeout)),
-            UserAgent: UserAgentHeader.Build(ResolveAppInfo(options.AppInfo)),
+                : throw Checks.Invalid("must not be negative", nameof(options.MaxRetries)),
+            Timeout: Checks.RequirePositive(options.Timeout, nameof(options.Timeout)),
+            UserAgent: Checks.UserAgent(options.AppInfo),
             TimeProvider: options.TimeProvider ?? TimeProvider.System,
             Logger: options.Logger);
     }
 
-    private static ArgumentException Invalid(string problem, string option) =>
-        new($"TeachMeHipaaClientOptions.{option} {problem}.", option);
-
-    private static string RequireText(string? value, string option) =>
-        string.IsNullOrWhiteSpace(value) ? throw Invalid("must be a non-empty string", option) : value!;
-
-    private static string ResolveBaseUrl(TeachMeHipaaEnvironment environment, Uri? baseUrl)
+    private static ITokenProvider CheckTokenProvider(TeachMeHipaaClientOptions options, string baseUrl)
     {
-        if (baseUrl is not null)
+        var conflicting = new[]
         {
-            return baseUrl.IsAbsoluteUri && (baseUrl.Scheme == Uri.UriSchemeHttps || baseUrl.Scheme == Uri.UriSchemeHttp)
-                ? baseUrl.AbsoluteUri.TrimEnd('/')
-                : throw Invalid("must be an absolute http or https URL", nameof(TeachMeHipaaClientOptions.BaseUrl));
+            (Name: nameof(options.ClientId), Given: !string.IsNullOrEmpty(options.ClientId)),
+            (Name: nameof(options.ClientSecret), Given: !string.IsNullOrEmpty(options.ClientSecret)),
+            (Name: nameof(options.Scopes), Given: options.Scopes is not null),
+        }.FirstOrDefault(option => option.Given);
+        if (conflicting.Given)
+        {
+            throw Checks.Invalid(
+                $"must not be set with {nameof(options.TokenProvider)}: give a token provider or an API client's "
+                    + "credentials, not both (Scopes belong to the token provider)",
+                conflicting.Name);
         }
 
-        return environment switch
+        // A Grant's Refresh token works only in its own Environment, and a
+        // provider that refreshed against another one would hand the client
+        // Access tokens its API refuses.
+        if (options.TokenProvider is PartnerGrantTokenProvider partnerGrant
+            && partnerGrant.BaseUrl.AbsoluteUri.TrimEnd('/') != baseUrl)
         {
-            TeachMeHipaaEnvironment.Live => LiveBaseUrl,
-            TeachMeHipaaEnvironment.Sandbox => SandboxBaseUrl,
-            _ => throw Invalid("must be Live or Sandbox", nameof(TeachMeHipaaClientOptions.Environment)),
-        };
-    }
-
-    private static string[] ResolveScopes(IReadOnlyList<string>? scopes)
-    {
-        if (scopes is null)
-        {
-            return [];
+            throw Checks.Invalid(
+                $"exchanges Refresh tokens at {partnerGrant.BaseUrl.AbsoluteUri.TrimEnd('/')}, but the client calls "
+                    + $"{baseUrl}; give both the same Environment and BaseUrl",
+                nameof(options.TokenProvider));
         }
 
-        var copy = scopes.ToArray();
-        return copy.Any(string.IsNullOrWhiteSpace)
-            ? throw Invalid("must not contain empty Scopes", nameof(TeachMeHipaaClientOptions.Scopes))
-            : copy;
+        return options.TokenProvider!;
     }
-
-    private static AppInfo? ResolveAppInfo(AppInfo? appInfo) =>
-        appInfo is not null && string.IsNullOrWhiteSpace(appInfo.Name)
-            ? throw Invalid("Name must be a non-empty string", nameof(TeachMeHipaaClientOptions.AppInfo))
-            : appInfo;
 }

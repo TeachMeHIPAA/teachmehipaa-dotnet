@@ -21,12 +21,13 @@ public sealed partial class TeachMeHipaaClient
     /// </summary>
     public TeachMeHipaaWebhooks Webhooks { get; } = TeachMeHipaaWebhooks.Instance;
 
+    private static readonly OptionChecks TransportChecks = new(nameof(TeachMeHipaaClientOptions));
+
     private static ApiRequestor CreateRequestor(TeachMeHipaaClientOptions options)
     {
         var config = ClientConfiguration.From(options);
 
-        HttpMessageHandler transport = options.HttpMessageHandler
-            ?? (options.HttpClient is null ? SharedHttpHandler.Instance : new HttpClientSendingHandler(options.HttpClient));
+        var transport = TransportChecks.Transport(options.HttpClient, options.HttpMessageHandler);
         if (config.Logger is not null)
         {
             transport = new LoggingHandler(config.Logger, config.TimeProvider) { InnerHandler = transport };
@@ -36,11 +37,14 @@ public sealed partial class TeachMeHipaaClient
 
         // The token endpoint is called through the same transport but not
         // through authentication, which would otherwise recurse into itself.
-        var tokenProvider = new ClientCredentialsTokenProvider(
-            config,
-            new HttpMessageInvoker(
-                new RetryHandler(RetryPolicy.TokenEndpoint, config.MaxRetries, config.TimeProvider) { InnerHandler = transport },
-                disposeHandler: false));
+        var tokenProvider = config.Credentials is { } credentials
+            ? new ClientCredentialsTokenProvider(
+                config,
+                credentials,
+                new HttpMessageInvoker(
+                    new RetryHandler(RetryPolicy.TokenEndpoint, config.MaxRetries, config.TimeProvider) { InnerHandler = transport },
+                    disposeHandler: false))
+            : config.TokenProvider!;
         var api = new HttpMessageInvoker(
             new AuthenticationHandler(tokenProvider)
             {

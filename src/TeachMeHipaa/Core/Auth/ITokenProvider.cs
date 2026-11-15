@@ -1,18 +1,24 @@
 namespace TeachMeHipaa;
 
 /// <summary>
-/// Supplies the Access token for each request. Client credentials is the
-/// default adapter; partner Grants and static tokens plug in here too.
+/// Supplies the Access token for each request. A client mints its own with
+/// client credentials unless <see cref="TeachMeHipaaClientOptions.TokenProvider"/>
+/// gives it one of these, such as a <see cref="PartnerGrantTokenProvider"/>
+/// or a <see cref="StaticTokenProvider"/>.
 /// </summary>
-internal interface ITokenProvider
+public interface ITokenProvider
 {
-    /// <summary>The Access token to send; throws the mint's error, which the caller's call then raises.</summary>
+    /// <summary>The Access token to send. An exception thrown here is raised from the call that needed the token.</summary>
+    /// <param name="cancellationToken">Cancels getting the token.</param>
     Task<string> GetAccessTokenAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Called after the API answered 401 to <paramref name="accessToken"/>.
-    /// Forgets it if it is still the cached one, so the next call mints afresh;
-    /// a token that was already replaced is left alone, so concurrent 401s mint once.
+    /// Forget it if it is still the cached one, so the next call gets a new
+    /// one; leave a token that was already replaced alone, so concurrent 401s
+    /// renew once. When the next call returns the same token, the client
+    /// raises the 401 rather than sending the request again.
     /// </summary>
+    /// <param name="accessToken">The token the API refused.</param>
     void Invalidate(string accessToken);
 }

@@ -8,11 +8,20 @@ namespace TeachMeHipaa;
 /// </summary>
 public sealed class TeachMeHipaaClientOptions
 {
-    /// <summary>Your API client's id (<c>cli_…</c>). Required.</summary>
+    /// <summary>Your API client's id (<c>cli_…</c>). Required unless <see cref="TokenProvider"/> is given.</summary>
     public string ClientId { get; init; } = string.Empty;
 
-    /// <summary>Your API client's secret (<c>tmh_cs_…</c>). Required.</summary>
+    /// <summary>Your API client's secret (<c>tmh_cs_…</c>). Required unless <see cref="TokenProvider"/> is given.</summary>
     public string ClientSecret { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Supplies every Access token instead of <see cref="ClientId"/> and
+    /// <see cref="ClientSecret"/>, such as a <see cref="PartnerGrantTokenProvider"/>
+    /// for one Organization's Grant or a <see cref="StaticTokenProvider"/>.
+    /// Give this or the credentials and <see cref="Scopes"/>, not both. A
+    /// <see cref="PartnerGrantTokenProvider"/> must use the client's base URL.
+    /// </summary>
+    public ITokenProvider? TokenProvider { get; init; }
 
     /// <summary>
     /// Which deployment your credentials belong to. Defaults to

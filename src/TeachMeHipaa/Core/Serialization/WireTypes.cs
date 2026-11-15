@@ -14,6 +14,13 @@ internal sealed class TokenEndpointResponse
 
     [JsonPropertyName("expires_in")]
     public long? ExpiresIn { get; set; }
+
+    /// <summary>Only in a Grant's exchanges (<c>AuthorizationCodeTokenResponse</c>).</summary>
+    [JsonPropertyName("refresh_token")]
+    public string? RefreshToken { get; set; }
+
+    [JsonPropertyName("scope")]
+    public string? Scope { get; set; }
 }
 
 /// <summary><c>dev#/components/schemas/OAuthTokenError</c>.</summary>
