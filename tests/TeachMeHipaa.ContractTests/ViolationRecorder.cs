@@ -42,7 +42,7 @@ public sealed class ViolationRecorder : DelegatingHandler
         if (response.Headers.TryGetValues("sl-violations", out var headers))
         {
             var found = headers
-                .SelectMany(header => JsonDocument.Parse(header).RootElement.EnumerateArray())
+                .SelectMany(ParseViolations)
                 .Select(violation => (
                     Location: violation.GetProperty("location").EnumerateArray().Select(part => part.ToString()).ToArray(),
                     Message: violation.GetProperty("message").GetString()))
@@ -55,5 +55,12 @@ public sealed class ViolationRecorder : DelegatingHandler
         }
 
         return response;
+    }
+
+    // Each element is cloned so it outlives the JsonDocument, which is disposed here.
+    private static JsonElement[] ParseViolations(string header)
+    {
+        using var document = JsonDocument.Parse(header);
+        return document.RootElement.EnumerateArray().Select(violation => violation.Clone()).ToArray();
     }
 }

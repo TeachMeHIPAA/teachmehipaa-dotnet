@@ -123,11 +123,10 @@ public class CertificatePdfTests
             HttpClient = throughHttpClient ? httpClient : null,
         });
 
-        var download = client.Certificates.DownloadPdfStreamingAsync(CertificateId);
-        var first = await Task.WhenAny(download, Task.Delay(TimeSpan.FromSeconds(10)));
-
-        Assert.Same(download, first);
-        await using var pdf = await download;
+        // The body is held back, so the stream must be handed over before it is fully sent.
+        await using var pdf = await client.Certificates
+            .DownloadPdfStreamingAsync(CertificateId)
+            .WaitAsync(TimeSpan.FromSeconds(10));
         var start = new byte[16];
         Assert.Equal(16, await pdf.Content.ReadAsync(start));
         Assert.Equal(EveryByte[..16], start);
