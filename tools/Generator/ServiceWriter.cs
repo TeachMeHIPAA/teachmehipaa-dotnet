@@ -14,6 +14,11 @@ internal sealed partial class ServiceWriter
     // The Event log pages by the last Event's id (api-sdk-surface.md §4).
     private const string AfterPositionField = "eventId";
 
+    private const string IfMatchProperty = "IfMatch";
+
+    // The file name sent for a stream or bytes that bring none: the part's name plus this.
+    private static readonly Dictionary<string, string> FileExtensions = new(StringComparer.Ordinal) { ["text/csv"] = ".csv" };
+
     // Services a hand-written partial in src/TeachMeHipaa/Extensions extends,
     // outside the directories the generator owns.
     private static readonly HashSet<string> ExtendedServices = new(StringComparer.Ordinal) { "EventService" };
@@ -128,28 +133,50 @@ internal sealed partial class ServiceWriter
             plan.Fields.Add(new OptionField(parameter.Name, ModelWriter.Property(parameter.Name, plan.OptionsClass), parameter.Type, parameter.Required, false, parameter.Description, FieldKind.Query));
         }
 
-        var names = plan.Fields.Select(field => field.Property).ToList();
+        plan.IfMatch = method.IfMatch is "required" or "optional" or "none"
+            ? method.IfMatch
+            : throw new GeneratorException($"{operation}: no rule for ifMatch {method.IfMatch}");
+        plan.IfNoneMatch = method.IfNoneMatch switch
+        {
+            "none" => false,
+            "optional" when method.Response.Kind == "model" => true,
+            _ => throw new GeneratorException($"{operation}: no rule for ifNoneMatch {method.IfNoneMatch} on a {method.Response.Kind} response"),
+        };
+
+        var names = plan.Fields.Select(field => field.Property)
+            .Concat(plan.IfMatch == "none" ? [] : [IfMatchProperty])
+            .ToList();
         if (names.Distinct(StringComparer.Ordinal).Count() != names.Count)
         {
             throw new GeneratorException($"{operation}: options property names collide");
         }
 
         var parameters = method.PathParams.Select(parameter => Naming.Parameter(parameter.Name))
-            .Concat(["options", "requestOptions", "cancellationToken"]).ToList();
+            .Concat(["ifNoneMatch", "options", "requestOptions", "cancellationToken"])
+            .Concat(plan.Fields.Where(field => field.Kind == FieldKind.File).Select(FileLocal))
+            .ToList();
         if (parameters.Distinct(StringComparer.Ordinal).Count() != parameters.Count)
         {
             throw new GeneratorException($"{operation}: parameter names collide");
         }
 
-        if (plan.Fields.Count == 0)
+        if (plan.Fields.Count == 0 && plan.IfMatch == "none")
         {
             plan.OptionsClass = null;
         }
 
-        plan.OptionsRequired = (method.RequestBody?.Required ?? false) || method.QueryParams.Any(parameter => parameter.Required);
+        plan.OptionsRequired = (method.RequestBody?.Required ?? false)
+            || method.QueryParams.Any(parameter => parameter.Required)
+            || plan.IfMatch == "required";
         if (plan.ContentType is "application/json" or "application/merge-patch+json")
         {
             _serialized.Add(plan.OptionsClass!);
+        }
+
+        // OptionalJsonConverter<T> looks up each patch field's type in the context.
+        if (plan.ContentType == "application/merge-patch+json")
+        {
+            _serialized.AddRange(plan.Fields.Where(field => field.Kind == FieldKind.Body).Select(field => _types.PatchValueType(field.Type, field.Nullable, forTypeof: true)));
         }
 
         if (method.Response.Kind == "page")
@@ -228,6 +255,11 @@ internal sealed partial class ServiceWriter
             if (binary is not null && !field.Required)
             {
                 throw new GeneratorException($"{operation}: an optional file part has no rule");
+            }
+
+            if (binary is not null && !FileExtensions.ContainsKey(binary.ContentType))
+            {
+                throw new GeneratorException($"{operation}: no default file name for a {binary.ContentType} part");
             }
 
             plan.Fields.Add(new OptionField(
@@ -314,6 +346,18 @@ internal sealed partial class ServiceWriter
         {
             code.Line();
             Method(code, method);
+            if (method.IfNoneMatch)
+            {
+                code.Line();
+                ConditionalMethod(code, method);
+            }
+
+            if (method.Method.Response.Kind == "binary")
+            {
+                code.Line();
+                StreamingMethod(code, method);
+            }
+
             if (method.Method.Response.Kind == "page")
             {
                 code.Line();
@@ -338,11 +382,23 @@ internal sealed partial class ServiceWriter
         code.Line("/// <param name=\"cancellationToken\">Cancels the call.</param>");
         code.Line($"/// <returns>{Returns(plan, returnType)}</returns>");
         code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused the request or could not be reached.</exception>");
-        Signature(code, plan, $"Task<{returnType}>", plan.Name);
+        var files = plan.Fields.Where(field => field.Kind == FieldKind.File).ToList();
+        Signature(code, plan, $"{(files.Count > 0 ? "async " : "")}Task<{returnType}>", plan.Name);
         code.Line("{");
         code.Indent();
         Guards(code, plan);
-        code.Line($"return _requestor.{call.Method}(");
+        foreach (var file in files)
+        {
+            code.Open($"if (options.{file.Property} is null)");
+            code.Line($"throw new ArgumentException(\"options.{file.Property} is required.\", nameof(options));");
+            code.Close();
+            code.Line();
+            // Read once here, so a retry resends the same bytes and a missing file fails before sending.
+            var defaultName = file.Wire + FileExtensions[file.FileContentType!];
+            code.Line($"var {FileLocal(file)} = await options.{file.Property}.ReadAsync({Code.Literal(defaultName)}, nameof(options), cancellationToken).ConfigureAwait(false);");
+        }
+
+        code.Line($"return {(files.Count > 0 ? "await " : "")}_requestor.{call.Method}(");
         code.Indent();
         Request(code, plan);
         code.Line("requestOptions,");
@@ -351,6 +407,67 @@ internal sealed partial class ServiceWriter
             code.Line($"{argument},");
         }
 
+        code.Line(files.Count > 0 ? "cancellationToken).ConfigureAwait(false);" : "cancellationToken);");
+        code.Outdent();
+        code.Close();
+    }
+
+    private static string FileLocal(OptionField field) => Naming.Parameter(field.Wire + "Contents");
+
+    /// <summary>
+    /// The retrieve's <c>…IfModifiedAsync</c> sibling for the IR's optional
+    /// <c>If-None-Match</c>. A 304 has no object to return, so it gets its own
+    /// method and result type rather than a nullable model on the plain retrieve.
+    /// </summary>
+    private void ConditionalMethod(Code code, MethodPlan plan)
+    {
+        var method = plan.Method;
+        var type = Response(plan).ReturnType;
+        var name = plan.Name[..^"Async".Length] + "IfModifiedAsync";
+        code.Summary($"{(method.Summary is null ? $"Calls <c>{method.OperationId}</c>." : Code.Doc(method.Summary))} Only if it changed.");
+        code.Line($"/// <remarks>Sends <paramref name=\"ifNoneMatch\"/> as <c>If-None-Match</c>. When the <see cref=\"{type}\"/> still has that ETag the API answers 304 and the result has no value, so keep using your copy: <c>var current = result.Value ?? cached;</c></remarks>");
+        Parameters(code, plan, ifNoneMatch: true);
+        code.Line("/// <param name=\"cancellationToken\">Cancels the call.</param>");
+        code.Line($"/// <returns>The <see cref=\"{type}\"/> if it changed, else <see cref=\"ConditionalResult{{T}}.IsNotModified\"/>; <see cref=\"ConditionalResult{{T}}.LastResponse\"/> is set either way.</returns>");
+        code.Line("/// <exception cref=\"ArgumentException\"><paramref name=\"ifNoneMatch\"/> is an object whose response had no ETag.</exception>");
+        code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused the request or could not be reached.</exception>");
+        Signature(code, plan, $"Task<ConditionalResult<{type}>>", name, ifNoneMatch: true);
+        code.Line("{");
+        code.Indent();
+        Guards(code, plan);
+        code.Line("return _requestor.RequestConditionalAsync(");
+        code.Indent();
+        Request(code, plan, "IfNoneMatch = ifNoneMatch.Resolve(\"If-None-Match\", nameof(ifNoneMatch))");
+        code.Line("requestOptions,");
+        code.Line($"TeachMeHipaaJsonContext.Default.{type},");
+        code.Line("cancellationToken);");
+        code.Outdent();
+        code.Close();
+    }
+
+    /// <summary>
+    /// The download's <c>…StreamingAsync</c> sibling, as Azure's
+    /// <c>DownloadStreamingAsync</c>: the file is read from the connection as
+    /// it arrives, where Stripe .NET buffers it first.
+    /// </summary>
+    private void StreamingMethod(Code code, MethodPlan plan)
+    {
+        var method = plan.Method;
+        var name = plan.Name[..^"Async".Length] + "StreamingAsync";
+        code.Summary($"{(method.Summary is null ? $"Calls <c>{method.OperationId}</c>." : Code.Doc(method.Summary))} Streams the file.");
+        code.Line($"/// <remarks>Returns once the response headers arrive; read the file from <see cref=\"BinaryStreamResponse.Content\"/> as it comes, then dispose the response. <see cref=\"{plan.Name}\"/> returns the whole file in memory instead.</remarks>");
+        Parameters(code, plan);
+        code.Line("/// <param name=\"cancellationToken\">Cancels the call until the headers arrive.</param>");
+        code.Line("/// <returns>The file as a stream, with its content type and file name. Dispose it to release the connection.</returns>");
+        code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused the request or could not be reached.</exception>");
+        Signature(code, plan, "Task<BinaryStreamResponse>", name);
+        code.Line("{");
+        code.Indent();
+        Guards(code, plan);
+        code.Line("return _requestor.RequestBinaryStreamAsync(");
+        code.Indent();
+        Request(code, plan);
+        code.Line("requestOptions,");
         code.Line("cancellationToken);");
         code.Outdent();
         code.Close();
@@ -382,12 +499,17 @@ internal sealed partial class ServiceWriter
         code.Close();
     }
 
-    private static void Parameters(Code code, MethodPlan plan)
+    private static void Parameters(Code code, MethodPlan plan, bool ifNoneMatch = false)
     {
         foreach (var parameter in plan.Method.PathParams)
         {
             var description = parameter.Description is null ? $"The <c>{parameter.Name}</c>." : Code.Doc(parameter.Description);
             code.Line($"/// <param name=\"{parameter.Name}\">{description}</param>");
+        }
+
+        if (ifNoneMatch)
+        {
+            code.Line("/// <param name=\"ifNoneMatch\">The ETag of your copy, or the copy itself.</param>");
         }
 
         if (plan.OptionsClass is not null)
@@ -398,13 +520,18 @@ internal sealed partial class ServiceWriter
         code.Line("/// <param name=\"requestOptions\">Per-call settings, such as a request id or your own Idempotency-Key.</param>");
     }
 
-    private static void Signature(Code code, MethodPlan plan, string returnType, string name)
+    private static void Signature(Code code, MethodPlan plan, string returnType, string name, bool ifNoneMatch = false)
     {
         code.Line($"public {returnType} {name}(");
         code.Indent();
         foreach (var parameter in plan.Method.PathParams)
         {
             code.Line($"string {Naming.Parameter(parameter.Name)},");
+        }
+
+        if (ifNoneMatch)
+        {
+            code.Line("ETag ifNoneMatch,");
         }
 
         if (plan.OptionsClass is not null)
@@ -437,7 +564,7 @@ internal sealed partial class ServiceWriter
         }
     }
 
-    private void Request(Code code, MethodPlan plan)
+    private void Request(Code code, MethodPlan plan, string? conditional = null)
     {
         var method = plan.Method;
         var initializers = new List<string>();
@@ -470,6 +597,13 @@ internal sealed partial class ServiceWriter
         }
 
         var access = plan.OptionsRequired ? "options." : "options?.";
+        initializers.Add(plan.IfMatch switch
+        {
+            "required" => $"IfMatch = options.{IfMatchProperty}.Resolve(\"If-Match\", nameof(options))",
+            "optional" => $"IfMatch = {access}{IfMatchProperty}?.Resolve(\"If-Match\", nameof(options))",
+            _ => "",
+        });
+        initializers.Add(conditional ?? "");
         var query = plan.Fields.Where(field => field.Kind == FieldKind.Query).ToList();
         if (query.Count > 0)
         {
@@ -532,7 +666,7 @@ internal sealed partial class ServiceWriter
             var value = "options." + field.Property;
             if (field.Kind == FieldKind.File)
             {
-                return $"MultipartPart.File({Code.Literal(field.Wire)}, {value}, {Code.Literal(field.FileContentType!)})";
+                return $"MultipartPart.File({Code.Literal(field.Wire)}, {FileLocal(field)}, {Code.Literal(field.FileContentType!)})";
             }
 
             var typeInfo = $"TeachMeHipaaJsonContext.Default.{TypeModel.Name(field.Type)}";
@@ -626,11 +760,27 @@ internal sealed partial class ServiceWriter
             code.Summary($"Parameters for <see cref=\"{node.ClassName}.{plan.Name}\"/>.");
             if (plan.ContentType == "application/merge-patch+json")
             {
-                code.Line("/// <remarks>Sent as a JSON merge patch. A property left null is left out, so the field stays unchanged; clearing a field is not supported yet.</remarks>");
+                code.Line("/// <remarks>Sent as a JSON merge patch: a property left unset is left out, so the field keeps its value, and one set to null clears the field.</remarks>");
             }
 
             code.Open($"public sealed class {plan.OptionsClass}");
             var first = true;
+            Constructor(code, plan);
+
+            if (plan.IfMatch != "none")
+            {
+                code.Summary(plan.IfMatch == "required"
+                    ? "Sent as <c>If-Match</c>: the ETag you read the object with, or the object itself. If the object changed since, the call fails with <see cref=\"PreconditionFailedException\"/>. Required."
+                    : "Sent as <c>If-Match</c> when set: the ETag you read the object with, or the object itself. If the object changed since, the call fails with <see cref=\"PreconditionFailedException\"/>.");
+                if (json)
+                {
+                    code.Line("[JsonIgnore]");
+                }
+
+                code.Line($"public ETag{(plan.IfMatch == "required" ? "" : "?")} {IfMatchProperty} {{ get; set; }}");
+                first = false;
+            }
+
             foreach (var field in plan.Fields)
             {
                 if (!first)
@@ -641,16 +791,70 @@ internal sealed partial class ServiceWriter
                 first = false;
                 var description = field.Description is null ? $"The <c>{field.Wire}</c> parameter." : Code.Doc(field.Description);
                 code.Summary(field.Required ? description + " Required." : description);
+                var patch = plan.ContentType == "application/merge-patch+json" && field.Kind == FieldKind.Body;
                 if (json)
                 {
                     code.Line(field.Kind == FieldKind.Query ? "[JsonIgnore]" : $"[JsonPropertyName({Code.Literal(field.Wire)})]");
                 }
 
-                code.Line($"public {_types.Declaration(field.Type, field.Required, field.Nullable, field.Property, "get; set;", request: true)}");
+                if (patch)
+                {
+                    // Unset is the struct's default, so it is the value left out.
+                    code.Line("[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]");
+                    code.Line($"[JsonConverter(typeof(OptionalJsonConverter<{_types.PatchValueType(field.Type, field.Nullable, forTypeof: true)}>))]");
+                }
+
+                code.Line($"public {_types.Declaration(field.Type, field.Required, field.Nullable, field.Property, "get; set;", request: true, mergePatch: patch)}");
             }
 
             code.Close();
         });
+    }
+
+    /// <summary>
+    /// The options class's constructor, taking what the call can't be made
+    /// without and has no default for: a required <c>If-Match</c> and the files
+    /// to upload. Taking them here makes leaving one out a compile error.
+    /// </summary>
+    private static void Constructor(Code code, MethodPlan plan)
+    {
+        var members = new List<(string Parameter, string Type, string Property, string Doc)>();
+        if (plan.IfMatch == "required")
+        {
+            members.Add(("ifMatch", "ETag", IfMatchProperty, "The ETag you read the object with, or the object itself. Sent as <c>If-Match</c>."));
+        }
+
+        members.AddRange(plan.Fields
+            .Where(field => field.Kind == FieldKind.File)
+            .Select(field => (Naming.Parameter(field.Wire), "FileUpload", field.Property, field.Description is null ? "The file to upload." : Code.Doc(field.Description))));
+        if (members.Count == 0)
+        {
+            return;
+        }
+
+        code.Summary(plan.IfMatch == "required" ? "Creates the parameters of a conditional update." : "Creates the parameters with the file to upload.");
+        foreach (var member in members)
+        {
+            code.Line($"/// <param name=\"{member.Parameter.TrimStart('@')}\">{member.Doc}</param>");
+        }
+
+        var parameters = string.Join(", ", members.Select(member => $"{member.Type} {member.Parameter}"));
+        if (members.Count == 1)
+        {
+            code.Line($"public {plan.OptionsClass}({parameters}) => {members[0].Property} = {members[0].Parameter};");
+        }
+        else
+        {
+            code.Open($"public {plan.OptionsClass}({parameters})");
+            foreach (var member in members)
+            {
+                code.Line($"{member.Property} = {member.Parameter};");
+            }
+
+            code.Close();
+        }
+
+        code.Line();
     }
 
     private string ClientFile() => Code.File([], code =>
@@ -705,6 +909,12 @@ internal sealed partial class ServiceWriter
         public string PathExpression { get; set; } = "";
 
         public string? ContentType { get; set; }
+
+        /// <summary>The IR's <c>ifMatch</c>: <c>required</c>, <c>optional</c> or <c>none</c>.</summary>
+        public string IfMatch { get; set; } = "none";
+
+        /// <summary>Whether the IR allows <c>If-None-Match</c>, which adds an <c>…IfModifiedAsync</c> sibling.</summary>
+        public bool IfNoneMatch { get; set; }
 
         public List<OptionField> Fields { get; } = [];
     }

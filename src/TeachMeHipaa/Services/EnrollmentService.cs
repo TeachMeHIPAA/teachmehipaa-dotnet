@@ -190,6 +190,38 @@ public sealed class EnrollmentService
             cancellationToken);
     }
 
+    /// <summary>Retrieve an enrollment. Only if it changed.</summary>
+    /// <remarks>Sends <paramref name="ifNoneMatch"/> as <c>If-None-Match</c>. When the <see cref="Enrollment"/> still has that ETag the API answers 304 and the result has no value, so keep using your copy: <c>var current = result.Value ?? cached;</c></remarks>
+    /// <param name="enrollmentId">The <c>enrollmentId</c>.</param>
+    /// <param name="ifNoneMatch">The ETag of your copy, or the copy itself.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Enrollment"/> if it changed, else <see cref="ConditionalResult{T}.IsNotModified"/>; <see cref="ConditionalResult{T}.LastResponse"/> is set either way.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ifNoneMatch"/> is an object whose response had no ETag.</exception>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<ConditionalResult<Enrollment>> GetIfModifiedAsync(
+        string enrollmentId,
+        ETag ifNoneMatch,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(enrollmentId))
+        {
+            throw new ArgumentException("A enrollmentId is required.", nameof(enrollmentId));
+        }
+
+        return _requestor.RequestConditionalAsync(
+            new ApiRequest(HttpMethod.Get, $"/enrollments/{Uri.EscapeDataString(enrollmentId)}")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IfNoneMatch = ifNoneMatch.Resolve("If-None-Match", nameof(ifNoneMatch)),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.Enrollment,
+            cancellationToken);
+    }
+
     /// <summary>Import learners from CSV.</summary>
     /// <remarks>Invites everyone in a CSV file with an <c>email</c> column (and optional <c>name</c> and <c>courseId</c>). Send <c>validateOnly: true</c> first to preview the file without inviting anyone. Up to 500 rows. Requires the <c>enrollments:write</c> scope.</remarks>
     /// <param name="options">The call's parameters.</param>
@@ -197,7 +229,7 @@ public sealed class EnrollmentService
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
-    public Task<Operation> ImportAsync(
+    public async Task<Operation> ImportAsync(
         EnrollmentImportOptions options,
         RequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
@@ -207,19 +239,25 @@ public sealed class EnrollmentService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        if (options.File is null)
+        {
+            throw new ArgumentException("options.File is required.", nameof(options));
+        }
+
+        var fileContents = await options.File.ReadAsync("file.csv", nameof(options), cancellationToken).ConfigureAwait(false);
+        return await _requestor.RequestAsync(
             new ApiRequest(HttpMethod.Post, "/enrollments:import")
             {
                 OrganizationScoped = true,
                 RetrySafe = true,
                 IdempotencyKeyRequired = true,
                 Body = RequestBody.Multipart(
-                    MultipartPart.File("file", options.File, "text/csv"),
+                    MultipartPart.File("file", fileContents, "text/csv"),
                     MultipartPart.Json("options", (options.Options ?? new()) with { ValidateOnly = false }, TeachMeHipaaJsonContext.Default.ImportOptions)),
             },
             requestOptions,
             TeachMeHipaaJsonContext.Default.Operation,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>List all enrollments.</summary>
@@ -269,7 +307,7 @@ public sealed class EnrollmentService
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The <see cref="ImportPreview"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
-    public Task<ImportPreview> PreviewImportAsync(
+    public async Task<ImportPreview> PreviewImportAsync(
         EnrollmentPreviewImportOptions options,
         RequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
@@ -279,19 +317,25 @@ public sealed class EnrollmentService
             throw new ArgumentNullException(nameof(options));
         }
 
-        return _requestor.RequestAsync(
+        if (options.File is null)
+        {
+            throw new ArgumentException("options.File is required.", nameof(options));
+        }
+
+        var fileContents = await options.File.ReadAsync("file.csv", nameof(options), cancellationToken).ConfigureAwait(false);
+        return await _requestor.RequestAsync(
             new ApiRequest(HttpMethod.Post, "/enrollments:import")
             {
                 OrganizationScoped = true,
                 RetrySafe = true,
                 IdempotencyKeyRequired = true,
                 Body = RequestBody.Multipart(
-                    MultipartPart.File("file", options.File, "text/csv"),
+                    MultipartPart.File("file", fileContents, "text/csv"),
                     MultipartPart.Json("options", (options.Options ?? new()) with { ValidateOnly = true }, TeachMeHipaaJsonContext.Default.ImportOptions)),
             },
             requestOptions,
             TeachMeHipaaJsonContext.Default.ImportPreview,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Remind an enrollment.</summary>

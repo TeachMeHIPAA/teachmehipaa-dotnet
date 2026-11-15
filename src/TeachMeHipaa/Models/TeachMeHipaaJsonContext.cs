@@ -115,6 +115,7 @@ namespace TeachMeHipaa;
 [JsonSerializable(typeof(EventSeatOrderPaid))]
 [JsonSerializable(typeof(EventSeatsLow))]
 [JsonSerializable(typeof(EventType))]
+[JsonSerializable(typeof(IReadOnlyList<EventType>))]
 [JsonSerializable(typeof(ImportOptions))]
 [JsonSerializable(typeof(ImportPreview))]
 [JsonSerializable(typeof(ImportPreviewRowsItem))]
@@ -228,6 +229,9 @@ namespace TeachMeHipaa;
 [JsonSerializable(typeof(WebhookSubscriptionCreateOptions))]
 [JsonSerializable(typeof(WebhookSubscriptionCreated))]
 [JsonSerializable(typeof(WebhookSubscriptionUpdateOptions))]
+[JsonSerializable(typeof(bool))]
+[JsonSerializable(typeof(long))]
+[JsonSerializable(typeof(string))]
 internal sealed partial class TeachMeHipaaJsonContext : JsonSerializerContext
 {
 }

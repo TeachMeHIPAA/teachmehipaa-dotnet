@@ -4,7 +4,9 @@ namespace TeachMeHipaa;
 
 /// <summary>
 /// Bounds each HTTP attempt, token mints included, reading the body inside
-/// the same time limit. A failure to get a whole response becomes an
+/// the same time limit; a streamed download is bounded until its headers
+/// arrive, and the caller's reads by their own token. A failure to get a
+/// whole response becomes an
 /// <see cref="ApiConnectionException"/> (or <see cref="ApiTimeoutException"/>)
 /// here, so everything above it, retries included, sees one kind of error.
 /// </summary>
@@ -23,7 +25,11 @@ internal sealed class TimeoutHandler(TimeSpan defaultTimeout, TimeProvider timeP
         try
         {
             response = await base.SendAsync(request, linked.Token).ConfigureAwait(false);
-            await BufferAsync(response, linked.Token).ConfigureAwait(false);
+            if (RequestProperties.StreamResponse.Get(request) != true)
+            {
+                await BufferAsync(response, linked.Token).ConfigureAwait(false);
+            }
+
             return response;
         }
         catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)

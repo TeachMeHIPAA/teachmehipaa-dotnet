@@ -25,10 +25,4 @@ public sealed class RequestOptions
     /// call you repeat yourself, such as a sync job's replay, run at most once.
     /// </summary>
     public string? IdempotencyKey { get; set; }
-
-    /// <summary>
-    /// Sent as <c>If-Match</c>: the <see cref="TeachMeHipaaResponse.ETag"/> an
-    /// object was read with, so an update fails rather than overwrite a newer change.
-    /// </summary>
-    public string? IfMatch { get; set; }
 }

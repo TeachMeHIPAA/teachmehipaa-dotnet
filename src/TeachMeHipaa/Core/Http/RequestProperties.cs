@@ -21,6 +21,12 @@ internal static class RequestProperties
 
     /// <summary>False for public operations, which <see cref="AuthenticationHandler"/> sends without an Access token.</summary>
     public static readonly RequestProperty<bool> Authenticated = new("TeachMeHipaa.Authenticated");
+
+    /// <summary>
+    /// True for a streamed download: the response comes back once its headers
+    /// arrive and the caller reads the body, so nothing below buffers it.
+    /// </summary>
+    public static readonly RequestProperty<bool> StreamResponse = new("TeachMeHipaa.StreamResponse");
 }
 
 internal sealed class RequestProperty<T>(string name)

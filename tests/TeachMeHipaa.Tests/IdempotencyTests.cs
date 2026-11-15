@@ -140,7 +140,7 @@ public partial class IdempotencyTests
         var client = NewClient(handler, time: time);
 
         var error = await Assert.ThrowsAnyAsync<TeachMeHipaaException>(() => time.RunAsync(
-            client.Learners.UpdateAsync(LearnerId, new LearnerUpdateOptions { Name = "Ana Example" })));
+            client.Learners.UpdateAsync(LearnerId, new LearnerUpdateOptions("\"9f86d081\"") { Name = "Ana Example" })));
 
         Assert.IsType(exceptionType, error);
         var attempt = Assert.Single(handler.RequestsTo(UpdateRoute));

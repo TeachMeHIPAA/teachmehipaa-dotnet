@@ -228,6 +228,7 @@ public sealed class LearnerService
                 OrganizationScoped = true,
                 RetrySafe = true,
                 IdempotencyKeyRequired = true,
+                IfMatch = options?.IfMatch?.Resolve("If-Match", nameof(options)),
                 Query = [new("courseId", options?.CourseId)],
             },
             requestOptions,
@@ -295,6 +296,7 @@ public sealed class LearnerService
             new ApiRequest(new HttpMethod("PATCH"), $"/learners/{Uri.EscapeDataString(learnerId)}")
             {
                 OrganizationScoped = true,
+                IfMatch = options.IfMatch.Resolve("If-Match", nameof(options)),
                 Query = [new("courseId", options.CourseId)],
                 Body = RequestBody.MergePatch(options, TeachMeHipaaJsonContext.Default.LearnerUpdateOptions),
             },

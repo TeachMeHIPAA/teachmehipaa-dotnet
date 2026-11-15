@@ -4,5 +4,8 @@ namespace TeachMeHipaa;
 internal sealed class HttpClientSendingHandler(HttpClient httpClient) : HttpMessageHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-        httpClient.SendAsync(request, cancellationToken);
+        httpClient.SendAsync(
+            request,
+            RequestProperties.StreamResponse.Get(request) == true ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead,
+            cancellationToken);
 }

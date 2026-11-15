@@ -68,6 +68,38 @@ public sealed class SeatOrderService
             cancellationToken);
     }
 
+    /// <summary>Retrieve a seat order. Only if it changed.</summary>
+    /// <remarks>Sends <paramref name="ifNoneMatch"/> as <c>If-None-Match</c>. When the <see cref="SeatOrder"/> still has that ETag the API answers 304 and the result has no value, so keep using your copy: <c>var current = result.Value ?? cached;</c></remarks>
+    /// <param name="seatOrderId">The seat order id (<c>so_</c> + ULID).</param>
+    /// <param name="ifNoneMatch">The ETag of your copy, or the copy itself.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="SeatOrder"/> if it changed, else <see cref="ConditionalResult{T}.IsNotModified"/>; <see cref="ConditionalResult{T}.LastResponse"/> is set either way.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ifNoneMatch"/> is an object whose response had no ETag.</exception>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<ConditionalResult<SeatOrder>> GetIfModifiedAsync(
+        string seatOrderId,
+        ETag ifNoneMatch,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(seatOrderId))
+        {
+            throw new ArgumentException("A seatOrderId is required.", nameof(seatOrderId));
+        }
+
+        return _requestor.RequestConditionalAsync(
+            new ApiRequest(HttpMethod.Get, $"/seat-orders/{Uri.EscapeDataString(seatOrderId)}")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IfNoneMatch = ifNoneMatch.Resolve("If-None-Match", nameof(ifNoneMatch)),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.SeatOrder,
+            cancellationToken);
+    }
+
     /// <summary>List all seat orders.</summary>
     /// <remarks>Returns a list of the organization's seat orders, oldest first. Requires the <c>seats:purchase</c> or <c>billing:write</c> scope.</remarks>
     /// <param name="options">The call's parameters.</param>

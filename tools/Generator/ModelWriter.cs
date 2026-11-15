@@ -45,7 +45,7 @@ internal sealed class ModelWriter(TypeModel model)
             "boolean" => "bool",
             "dateTime" => "DateTimeOffset",
             "json" when !request => "JsonElement",
-            "binary" when request => "Stream",
+            "binary" when request => "FileUpload",
             _ => throw new GeneratorException($"no {(request ? "request" : "model")} type for {type.Type}"),
         },
         "ref" when model.PageItems.ContainsKey(type.Name!) => throw new GeneratorException($"{type.Name} is a page envelope"),
@@ -55,9 +55,26 @@ internal sealed class ModelWriter(TypeModel model)
         _ => throw new GeneratorException($"no {(request ? "request" : "model")} type for {type.Kind}"),
     };
 
-    /// <summary>A property declaration's type and initializer, by the field's presence rules.</summary>
-    public string Declaration(TypeRef type, bool required, bool nullable, string name, string accessors, bool request = false)
+    /// <summary>
+    /// The <c>T</c> of a merge-patch field's <c>Optional&lt;T&gt;</c>: nullable
+    /// only where the IR lets the field be cleared. <paramref name="forTypeof"/>
+    /// drops a reference type's <c>?</c>, which <c>typeof</c> rejects.
+    /// </summary>
+    public string PatchValueType(TypeRef type, bool nullable, bool forTypeof = false) =>
+        CsType(type, request: true) + (nullable && (!forTypeof || IsValueType(type)) ? "?" : "");
+
+    /// <summary>
+    /// A property declaration's type and initializer, by the field's presence
+    /// rules. A <paramref name="mergePatch"/> field is an <c>Optional&lt;T&gt;</c>,
+    /// so unset (left out) and null (cleared) are different values.
+    /// </summary>
+    public string Declaration(TypeRef type, bool required, bool nullable, string name, string accessors, bool request = false, bool mergePatch = false)
     {
+        if (mergePatch)
+        {
+            return $"Optional<{PatchValueType(type, nullable)}> {name} {{ {accessors} }}";
+        }
+
         var csType = CsType(type, request);
         if (nullable || !required)
         {
@@ -67,7 +84,8 @@ internal sealed class ModelWriter(TypeModel model)
         var initializer = type switch
         {
             { Kind: "primitive", Type: "string" } => "string.Empty",
-            { Kind: "primitive", Type: "binary" } => "Stream.Null",
+            // A file has no empty default; its options class takes it in the constructor.
+            { Kind: "primitive", Type: "binary" } => null,
             { Kind: "array" } => "[]",
             { Kind: "map" } => $"new Dictionary<string, {CsType(type.Values!)}>()",
             // A union is abstract; a missing one stays null, as the API never omits it.
@@ -77,6 +95,13 @@ internal sealed class ModelWriter(TypeModel model)
         };
         return initializer is null ? $"{csType} {name} {{ {accessors} }}" : $"{csType} {name} {{ {accessors} }} = {initializer};";
     }
+
+    private bool IsValueType(TypeRef type) => type switch
+    {
+        { Kind: "primitive", Type: "integer" or "number" or "boolean" or "dateTime" } => true,
+        { Kind: "ref" } => model.IsEnum(type),
+        _ => false,
+    };
 
     public static string Property(string wireName, string owner)
     {

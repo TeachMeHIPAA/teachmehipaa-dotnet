@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using System.Text.Json.Nodes;
 using TeachMeHipaa.Tests.Support;
 using static TeachMeHipaa.Tests.Support.Fixtures;
@@ -98,8 +97,7 @@ public class GeneratedServiceTests
 
         var subscription = await client.WebhookSubscriptions.UpdateAsync(
             "whs_01JD9",
-            new WebhookSubscriptionUpdateOptions { Enabled = false },
-            new RequestOptions { IfMatch = "\"rev-2\"" });
+            new WebhookSubscriptionUpdateOptions("\"rev-2\"") { Enabled = false });
 
         Assert.False(subscription.Enabled);
         Assert.Equal([EventType.LearnerInvited], subscription.EventTypes);
@@ -269,76 +267,6 @@ public class GeneratedServiceTests
         Assert.Equal(CertificateVerificationStatus.Valid, verification.Status);
         Assert.Null(Assert.Single(handler.RequestsTo(route)).Header("Authorization"));
         Assert.Empty(handler.RequestsTo(TokenRoute));
-    }
-
-    [Fact]
-    public async Task DownloadsACertificatePdfAsBytesWithItsContentTypeAndFileName()
-    {
-        var route = $"GET /v1/organizations/{OrgId}/certificates/cert_01JD8/content";
-        byte[] pdf = [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37, 0x0A, 0xE2, 0xE3, 0xCF, 0xD3];
-        var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply())
-            .Script(route, new ScriptedReply
-            {
-                Bytes = pdf,
-                Headers = new Dictionary<string, string>
-                {
-                    ["Content-Type"] = "application/pdf",
-                    ["Content-Disposition"] = "attachment; filename=\"certificate-cert_01JD8.pdf\"",
-                },
-            });
-        var client = NewClient(handler);
-
-        var file = await client.Certificates.DownloadPdfAsync("cert_01JD8");
-
-        Assert.Equal("application/pdf", file.ContentType);
-        Assert.Equal("certificate-cert_01JD8.pdf", file.FileName);
-        Assert.Equal("application/pdf", Assert.Single(handler.RequestsTo(route)).Header("Accept"));
-        Assert.Equal(HttpStatusCode.OK, file.LastResponse?.StatusCode);
-        Assert.Equal(pdf, file.Data);
-    }
-
-    public static TheoryData<bool> Previews => new() { true, false };
-
-    [Theory]
-    [MemberData(nameof(Previews))]
-    public async Task ImportsACsvAsAMultipartFileWithItsJsonOptions(bool preview)
-    {
-        var route = $"POST /v1/organizations/{OrgId}/enrollments:import";
-        var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply())
-            .Script(route, new ScriptedReply
-            {
-                Json = preview
-                    ? """{"totalRows":1,"validRows":1,"seatsRequired":1,"seatsAvailable":9,"rows":[{"rowNumber":1,"email":"ana@example.com","courseId":"hipaa-2026","status":"valid"}]}"""
-                    : """{"name":"op_01JD9","done":false}""",
-            });
-        var client = NewClient(handler);
-        using var csv = new MemoryStream(Encoding.UTF8.GetBytes("email,name\nana@example.com,Ana Example\n"));
-        var importOptions = new ImportOptions { CourseId = "hipaa-2026" };
-
-        if (preview)
-        {
-            var result = await client.Enrollments.PreviewImportAsync(new EnrollmentPreviewImportOptions { File = csv, Options = importOptions });
-            Assert.Equal(9, result.SeatsAvailable);
-        }
-        else
-        {
-            var operation = await client.Enrollments.ImportAsync(new EnrollmentImportOptions { File = csv, Options = importOptions });
-            Assert.Equal("op_01JD9", operation.Name);
-        }
-
-        var request = Assert.Single(handler.RequestsTo(route));
-        Assert.StartsWith("multipart/form-data; boundary=", request.Header("Content-Type"), StringComparison.Ordinal);
-        Assert.NotNull(request.Header("Idempotency-Key"));
-        var body = request.Body!;
-        Assert.Contains("Content-Type: text/csv", body, StringComparison.Ordinal);
-        Assert.Contains("name=file", body, StringComparison.Ordinal);
-        Assert.Contains("email,name\nana@example.com,Ana Example\n", body, StringComparison.Ordinal);
-        Assert.Contains("Content-Type: application/json", body, StringComparison.Ordinal);
-        Assert.Contains("name=options", body, StringComparison.Ordinal);
-        Assert.Contains($$$"""{"courseId":"hipaa-2026","validateOnly":{{{(preview ? "true" : "false")}}}}""", body, StringComparison.Ordinal);
-        Assert.True(csv.CanRead, "the caller's stream stays open");
     }
 
     [Fact]

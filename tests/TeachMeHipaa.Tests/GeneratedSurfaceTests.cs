@@ -16,20 +16,22 @@ public class GeneratedSurfaceTests
     // `retrieveLinks`; the IR: `delete`, not `del`, and `auth.introspect`) and
     // Q25's splits, in Stripe .NET's names: services are the plural resource,
     // `retrieve` is GetAsync, and every method is async. Each list also has
-    // Stripe .NET's `ListAutoPagingAsync` sibling, iterating every page.
+    // Stripe .NET's `ListAutoPagingAsync` sibling, iterating every page, and
+    // each retrieve that takes If-None-Match a `GetIfModifiedAsync` sibling;
+    // a download also has a `…StreamingAsync` sibling, as in Azure's SDKs.
     private static readonly Dictionary<string, string[]> ExpectedMethods = new()
     {
         ["listAuditEvents"] = ["AuditEvents.ListAsync", "AuditEvents.ListAutoPagingAsync"],
         ["introspectAccessToken"] = ["Auth.IntrospectAsync"],
         ["getCertificateVerification"] = ["CertificateVerifications.GetAsync"],
-        ["downloadCertificatePdf"] = ["Certificates.DownloadPdfAsync"],
+        ["downloadCertificatePdf"] = ["Certificates.DownloadPdfAsync", "Certificates.DownloadPdfStreamingAsync"],
         ["exportCertificates"] = ["Certificates.ExportAsync"],
         ["listCertificates"] = ["Certificates.ListAsync", "Certificates.ListAutoPagingAsync"],
         ["getCertificate"] = ["Certificates.GetAsync"],
         ["getCertificateCredentials"] = ["Certificates.RetrieveLinksAsync"],
         ["getComplianceSummary"] = ["Compliance.GetAsync"],
         ["listCourses"] = ["Courses.ListAsync", "Courses.ListAutoPagingAsync"],
-        ["getCourse"] = ["Courses.GetAsync"],
+        ["getCourse"] = ["Courses.GetAsync", "Courses.GetIfModifiedAsync"],
         ["batchEnrollments"] = ["Enrollments.BatchAsync", "Enrollments.BatchByFilterAsync"],
         ["cancelEnrollment"] = ["Enrollments.CancelAsync"],
         ["createEnrollment"] = ["Enrollments.CreateAsync"],
@@ -39,7 +41,7 @@ public class GeneratedSurfaceTests
         ["remindEnrollment"] = ["Enrollments.RemindAsync"],
         ["renewEnrollment"] = ["Enrollments.RenewAsync"],
         ["resendEnrollmentInvite"] = ["Enrollments.ResendInviteAsync"],
-        ["getEnrollment"] = ["Enrollments.GetAsync"],
+        ["getEnrollment"] = ["Enrollments.GetAsync", "Enrollments.GetIfModifiedAsync"],
         ["listOrgEvents"] = ["Events.ListAsync", "Events.ListAutoPagingAsync"],
         ["batchUpsertLearners"] = ["Learners.BatchUpsertAsync"],
         ["createLearner"] = ["Learners.CreateAsync"],
@@ -65,13 +67,13 @@ public class GeneratedSurfaceTests
         ["createSeatOrder"] = ["SeatOrders.CreateAsync"],
         ["listSeatOrders"] = ["SeatOrders.ListAsync", "SeatOrders.ListAutoPagingAsync"],
         ["quoteSeatOrder"] = ["SeatOrders.QuoteAsync"],
-        ["getSeatOrder"] = ["SeatOrders.GetAsync"],
+        ["getSeatOrder"] = ["SeatOrders.GetAsync", "SeatOrders.GetIfModifiedAsync"],
         ["getSeatInventory"] = ["Seats.GetAsync"],
         ["createWebhookSubscription"] = ["WebhookSubscriptions.CreateAsync"],
         ["deleteWebhookSubscription"] = ["WebhookSubscriptions.DeleteAsync"],
         ["listWebhookSubscriptions"] = ["WebhookSubscriptions.ListAsync", "WebhookSubscriptions.ListAutoPagingAsync"],
         ["redriveWebhookSubscription"] = ["WebhookSubscriptions.RedriveAsync"],
-        ["getWebhookSubscription"] = ["WebhookSubscriptions.GetAsync"],
+        ["getWebhookSubscription"] = ["WebhookSubscriptions.GetAsync", "WebhookSubscriptions.GetIfModifiedAsync"],
         ["testWebhookSubscription"] = ["WebhookSubscriptions.TestAsync"],
         ["updateWebhookSubscription"] = ["WebhookSubscriptions.UpdateAsync"],
     };
@@ -118,7 +120,7 @@ public class GeneratedSurfaceTests
     [Fact]
     public void TheClientExposesExactlyTheExpectedMethods()
     {
-        Assert.Equal(67, ExpectedNames.Length);
+        Assert.Equal(72, ExpectedNames.Length);
         Assert.Equal(
             ExpectedNames.Concat(Extensions).Order(StringComparer.Ordinal),
             ServiceMethods(typeof(TeachMeHipaaClient), "").Select(entry => entry.Name).Order(StringComparer.Ordinal));

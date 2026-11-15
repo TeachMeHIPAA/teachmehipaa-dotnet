@@ -25,6 +25,8 @@ public sealed record IrMethod(
     string? Description,
     IReadOnlyList<IrParam> HeaderParams,
     string IdempotencyKey,
+    string IfMatch,
+    string IfNoneMatch,
     bool OrgScoped,
     IrPagination? Pagination,
     IrPath Path,

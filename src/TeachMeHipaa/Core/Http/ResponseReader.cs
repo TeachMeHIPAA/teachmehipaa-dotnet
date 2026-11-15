@@ -34,6 +34,20 @@ internal static class ResponseReader
 #endif
     }
 
+    public static async Task<Stream> ReadStreamAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Content is null)
+        {
+            return Stream.Null;
+        }
+#if NET5_0_OR_GREATER
+        return await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+#endif
+    }
+
     /// <summary>The file name from <c>Content-Disposition</c>, preferring RFC 6266's UTF-8 <c>filename*</c>.</summary>
     public static string? FileName(HttpResponseMessage response)
     {

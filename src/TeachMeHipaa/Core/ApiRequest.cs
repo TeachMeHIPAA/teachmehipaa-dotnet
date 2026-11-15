@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -33,6 +32,12 @@ internal sealed record ApiRequest(HttpMethod Method, string Path)
 
     /// <summary>The media type of a success response; JSON when null.</summary>
     public string? Accept { get; init; }
+
+    /// <summary>Sent as <c>If-Match</c>: the update fails with a 412 if the object changed since this ETag.</summary>
+    public string? IfMatch { get; init; }
+
+    /// <summary>Sent as <c>If-None-Match</c>: the API answers 304 if the object still has this ETag.</summary>
+    public string? IfNoneMatch { get; init; }
 
     /// <summary>Query parameters; null values are left out.</summary>
     public IEnumerable<KeyValuePair<string, string?>>? Query { get; init; }
@@ -114,10 +119,10 @@ internal sealed class MultipartPart
 
     public HttpContent CreateContent() => _createContent();
 
-    public static MultipartPart File(string name, Stream data, string contentType) =>
-        new(name, name, () =>
+    public static MultipartPart File(string name, FileContents file, string contentType) =>
+        new(name, file.FileName, () =>
         {
-            var content = new BorrowedStreamContent(data);
+            var content = new ByteArrayContent(file.Data);
             content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
             return content;
         });
@@ -131,18 +136,5 @@ internal sealed class MultipartPart
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             return content;
         });
-    }
-
-    // StreamContent would dispose the caller's stream along with the request.
-    private sealed class BorrowedStreamContent(Stream stream) : HttpContent
-    {
-        protected override Task SerializeToStreamAsync(Stream target, TransportContext? context) =>
-            stream.CopyToAsync(target);
-
-        protected override bool TryComputeLength(out long length)
-        {
-            length = 0;
-            return false;
-        }
     }
 }

@@ -94,6 +94,38 @@ public sealed class WebhookSubscriptionService
             cancellationToken);
     }
 
+    /// <summary>Retrieve a webhook subscription. Only if it changed.</summary>
+    /// <remarks>Sends <paramref name="ifNoneMatch"/> as <c>If-None-Match</c>. When the <see cref="WebhookSubscription"/> still has that ETag the API answers 304 and the result has no value, so keep using your copy: <c>var current = result.Value ?? cached;</c></remarks>
+    /// <param name="subscriptionId">The webhook subscription id.</param>
+    /// <param name="ifNoneMatch">The ETag of your copy, or the copy itself.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="WebhookSubscription"/> if it changed, else <see cref="ConditionalResult{T}.IsNotModified"/>; <see cref="ConditionalResult{T}.LastResponse"/> is set either way.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ifNoneMatch"/> is an object whose response had no ETag.</exception>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<ConditionalResult<WebhookSubscription>> GetIfModifiedAsync(
+        string subscriptionId,
+        ETag ifNoneMatch,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(subscriptionId))
+        {
+            throw new ArgumentException("A subscriptionId is required.", nameof(subscriptionId));
+        }
+
+        return _requestor.RequestConditionalAsync(
+            new ApiRequest(HttpMethod.Get, $"/webhook-subscriptions/{Uri.EscapeDataString(subscriptionId)}")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IfNoneMatch = ifNoneMatch.Resolve("If-None-Match", nameof(ifNoneMatch)),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.WebhookSubscription,
+            cancellationToken);
+    }
+
     /// <summary>List all webhook subscriptions.</summary>
     /// <remarks>Returns a list of the organization's webhook subscriptions. Signing secrets are never returned. Requires the <c>webhooks:manage</c> or <c>org:admin</c> scope.</remarks>
     /// <param name="options">The call's parameters.</param>
@@ -220,6 +252,7 @@ public sealed class WebhookSubscriptionService
             new ApiRequest(new HttpMethod("PATCH"), $"/webhook-subscriptions/{Uri.EscapeDataString(subscriptionId)}")
             {
                 OrganizationScoped = true,
+                IfMatch = options.IfMatch.Resolve("If-Match", nameof(options)),
                 Body = RequestBody.MergePatch(options, TeachMeHipaaJsonContext.Default.WebhookSubscriptionUpdateOptions),
             },
             requestOptions,

@@ -35,15 +35,28 @@ internal sealed class ApiRequestor
         where T : TeachMeHipaaEntity
     {
         using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
-        var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
-        var value = response.IsSuccessStatusCode ? ResponseReader.Parse(response, text, typeInfo) : null;
-        if (value is null)
+        return await ReadAsync(response, typeInfo, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends a retrieve with <see cref="ApiRequest.IfNoneMatch"/>: a 304 means
+    /// the caller's copy is current, so it comes back without an object.
+    /// </summary>
+    public async Task<ConditionalResult<T>> RequestConditionalAsync<T>(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        JsonTypeInfo<T> typeInfo,
+        CancellationToken cancellationToken)
+        where T : TeachMeHipaaEntity
+    {
+        using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotModified)
         {
-            throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+            return new ConditionalResult<T>(null, TeachMeHipaaResponse.From(response));
         }
 
-        value.LastResponse = TeachMeHipaaResponse.From(response);
-        return value;
+        var value = await ReadAsync(response, typeInfo, cancellationToken).ConfigureAwait(false);
+        return new ConditionalResult<T>(value, value.LastResponse!);
     }
 
     /// <summary>
@@ -98,22 +111,35 @@ internal sealed class ApiRequestor
         RequestOptions? requestOptions,
         CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
-        var contentType = response.Content?.Headers.ContentType?.MediaType;
-        // Unknown paths answer with a 200 HTML page, so only the promised type counts as the file.
-        if (response.IsSuccessStatusCode && string.Equals(contentType, request.Accept, StringComparison.OrdinalIgnoreCase))
+        using var response = await SendForFileAsync(request, requestOptions, streamResponse: false, cancellationToken).ConfigureAwait(false);
+        return new BinaryResponse
         {
-            return new BinaryResponse
-            {
-                Data = await ResponseReader.ReadBytesAsync(response, cancellationToken).ConfigureAwait(false),
-                ContentType = contentType,
-                FileName = ResponseReader.FileName(response),
-                LastResponse = TeachMeHipaaResponse.From(response),
-            };
-        }
+            Data = await ResponseReader.ReadBytesAsync(response, cancellationToken).ConfigureAwait(false),
+            ContentType = response.Content?.Headers.ContentType?.MediaType,
+            FileName = ResponseReader.FileName(response),
+            LastResponse = TeachMeHipaaResponse.From(response),
+        };
+    }
 
-        var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
-        throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+    /// <summary>
+    /// Like <see cref="RequestBinaryAsync"/>, but returns once the headers
+    /// arrive, so the caller reads the file from the connection as it comes.
+    /// </summary>
+    public async Task<BinaryStreamResponse> RequestBinaryStreamAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        CancellationToken cancellationToken)
+    {
+        var response = await SendForFileAsync(request, requestOptions, streamResponse: true, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return new BinaryStreamResponse(response, await ResponseReader.ReadStreamAsync(response, cancellationToken).ConfigureAwait(false));
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Sends a call whose success response has no body, such as a 204 from a DELETE.</summary>
@@ -133,16 +159,59 @@ internal sealed class ApiRequestor
         return TeachMeHipaaResponse.From(response);
     }
 
+    /// <summary>The response when it is the promised file; anything else is disposed and thrown.</summary>
+    private async Task<HttpResponseMessage> SendForFileAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        bool streamResponse,
+        CancellationToken cancellationToken)
+    {
+        var response = await SendAsync(request, requestOptions, cancellationToken, streamResponse).ConfigureAwait(false);
+        // Unknown paths answer with a 200 HTML page, so only the promised type counts as the file.
+        if (response.IsSuccessStatusCode
+            && string.Equals(response.Content?.Headers.ContentType?.MediaType, request.Accept, StringComparison.OrdinalIgnoreCase))
+        {
+            return response;
+        }
+
+        using (response)
+        {
+            var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
+            throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+        }
+    }
+
+    private async Task<T> ReadAsync<T>(HttpResponseMessage response, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken)
+        where T : TeachMeHipaaEntity
+    {
+        var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
+        var value = response.IsSuccessStatusCode ? ResponseReader.Parse(response, text, typeInfo) : null;
+        if (value is null)
+        {
+            throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+        }
+
+        value.LastResponse = TeachMeHipaaResponse.From(response);
+        return value;
+    }
+
     private async Task<HttpResponseMessage> SendAsync(
         ApiRequest request,
         RequestOptions? requestOptions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool streamResponse = false)
     {
         var path = request.OrganizationScoped
             ? $"/organizations/{Uri.EscapeDataString(await _organization.GetOrganizationIdAsync(cancellationToken).ConfigureAwait(false))}{request.Path}"
             : request.Path;
         using var message = new HttpRequestMessage(request.Method, new Uri($"{_config.BaseUrl}{path}{QueryString(request.Query)}"));
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(request.Accept ?? "application/json"));
+        if (request.Accept is not null)
+        {
+            // Errors still come back as problem documents, which the typed exceptions read.
+            message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/problem+json"));
+        }
+
         message.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
         // Fixed once per call, so every retry and the 401 replay send the same key.
         var idempotencyKey = requestOptions?.IdempotencyKey
@@ -152,9 +221,14 @@ internal sealed class ApiRequestor
             message.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
         }
 
-        if (requestOptions?.IfMatch is { } ifMatch)
+        if (request.IfMatch is { } ifMatch)
         {
             message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
+
+        if (request.IfNoneMatch is { } ifNoneMatch)
+        {
+            message.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
         }
 
         if (requestOptions?.RequestId is { } requestId)
@@ -179,6 +253,11 @@ internal sealed class ApiRequestor
 
         RequestProperties.RetrySafe.Set(message, request.RetrySafe);
         RequestProperties.Authenticated.Set(message, request.Authenticated);
+        if (streamResponse)
+        {
+            RequestProperties.StreamResponse.Set(message, true);
+        }
+
         return await _api.SendAsync(message, cancellationToken).ConfigureAwait(false);
     }
 

@@ -38,6 +38,34 @@ public sealed class CertificateService
             cancellationToken);
     }
 
+    /// <summary>Download a certificate. Streams the file.</summary>
+    /// <remarks>Returns once the response headers arrive; read the file from <see cref="BinaryStreamResponse.Content"/> as it comes, then dispose the response. <see cref="DownloadPdfAsync"/> returns the whole file in memory instead.</remarks>
+    /// <param name="certId">The <c>certId</c>.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call until the headers arrive.</param>
+    /// <returns>The file as a stream, with its content type and file name. Dispose it to release the connection.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<BinaryStreamResponse> DownloadPdfStreamingAsync(
+        string certId,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(certId))
+        {
+            throw new ArgumentException("A certId is required.", nameof(certId));
+        }
+
+        return _requestor.RequestBinaryStreamAsync(
+            new ApiRequest(HttpMethod.Get, $"/certificates/{Uri.EscapeDataString(certId)}/content")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                Accept = "application/pdf",
+            },
+            requestOptions,
+            cancellationToken);
+    }
+
     /// <summary>Export certificates.</summary>
     /// <remarks>Exports the organization's certificate records as CSV. Requires the <c>certificates:read</c> scope.</remarks>
     /// <param name="options">The call's parameters.</param>

@@ -38,6 +38,38 @@ public sealed class CourseService
             cancellationToken);
     }
 
+    /// <summary>Retrieve a course. Only if it changed.</summary>
+    /// <remarks>Sends <paramref name="ifNoneMatch"/> as <c>If-None-Match</c>. When the <see cref="Course"/> still has that ETag the API answers 304 and the result has no value, so keep using your copy: <c>var current = result.Value ?? cached;</c></remarks>
+    /// <param name="courseId">The <c>courseId</c>.</param>
+    /// <param name="ifNoneMatch">The ETag of your copy, or the copy itself.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Course"/> if it changed, else <see cref="ConditionalResult{T}.IsNotModified"/>; <see cref="ConditionalResult{T}.LastResponse"/> is set either way.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ifNoneMatch"/> is an object whose response had no ETag.</exception>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<ConditionalResult<Course>> GetIfModifiedAsync(
+        string courseId,
+        ETag ifNoneMatch,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(courseId))
+        {
+            throw new ArgumentException("A courseId is required.", nameof(courseId));
+        }
+
+        return _requestor.RequestConditionalAsync(
+            new ApiRequest(HttpMethod.Get, $"/courses/{Uri.EscapeDataString(courseId)}")
+            {
+                Authenticated = false,
+                RetrySafe = true,
+                IfNoneMatch = ifNoneMatch.Resolve("If-None-Match", nameof(ifNoneMatch)),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.Course,
+            cancellationToken);
+    }
+
     /// <summary>List all courses.</summary>
     /// <remarks>Returns a list of the courses in the public catalog. Needs no access token.</remarks>
     /// <param name="options">The call's parameters.</param>
