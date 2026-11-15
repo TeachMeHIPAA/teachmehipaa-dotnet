@@ -39,7 +39,7 @@ public sealed record IrPath(string Template, string? CustomVerb);
 
 public sealed record IrParam(string Name, string? Description, bool Required, TypeRef Type);
 
-public sealed record IrPagination(string CursorParam, TypeRef ItemType);
+public sealed record IrPagination(string CursorParam, string Style, TypeRef ItemType);
 
 public sealed record IrRequestBody(
     IReadOnlyList<IrBinaryPart> BinaryParts,

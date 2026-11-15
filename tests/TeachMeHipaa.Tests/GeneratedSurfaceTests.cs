@@ -15,60 +15,61 @@ public class GeneratedSurfaceTests
     // From api-sdk-surface.md §11 with the grilling's renames (Q12:
     // `retrieveLinks`; the IR: `delete`, not `del`, and `auth.introspect`) and
     // Q25's splits, in Stripe .NET's names: services are the plural resource,
-    // `retrieve` is GetAsync, and every method is async.
+    // `retrieve` is GetAsync, and every method is async. Each list also has
+    // Stripe .NET's `ListAutoPagingAsync` sibling, iterating every page.
     private static readonly Dictionary<string, string[]> ExpectedMethods = new()
     {
-        ["listAuditEvents"] = ["AuditEvents.ListAsync"],
+        ["listAuditEvents"] = ["AuditEvents.ListAsync", "AuditEvents.ListAutoPagingAsync"],
         ["introspectAccessToken"] = ["Auth.IntrospectAsync"],
         ["getCertificateVerification"] = ["CertificateVerifications.GetAsync"],
         ["downloadCertificatePdf"] = ["Certificates.DownloadPdfAsync"],
         ["exportCertificates"] = ["Certificates.ExportAsync"],
-        ["listCertificates"] = ["Certificates.ListAsync"],
+        ["listCertificates"] = ["Certificates.ListAsync", "Certificates.ListAutoPagingAsync"],
         ["getCertificate"] = ["Certificates.GetAsync"],
         ["getCertificateCredentials"] = ["Certificates.RetrieveLinksAsync"],
         ["getComplianceSummary"] = ["Compliance.GetAsync"],
-        ["listCourses"] = ["Courses.ListAsync"],
+        ["listCourses"] = ["Courses.ListAsync", "Courses.ListAutoPagingAsync"],
         ["getCourse"] = ["Courses.GetAsync"],
         ["batchEnrollments"] = ["Enrollments.BatchAsync", "Enrollments.BatchByFilterAsync"],
         ["cancelEnrollment"] = ["Enrollments.CancelAsync"],
         ["createEnrollment"] = ["Enrollments.CreateAsync"],
         ["exportEnrollments"] = ["Enrollments.ExportAsync"],
         ["importEnrollments"] = ["Enrollments.ImportAsync", "Enrollments.PreviewImportAsync"],
-        ["listEnrollments"] = ["Enrollments.ListAsync"],
+        ["listEnrollments"] = ["Enrollments.ListAsync", "Enrollments.ListAutoPagingAsync"],
         ["remindEnrollment"] = ["Enrollments.RemindAsync"],
         ["renewEnrollment"] = ["Enrollments.RenewAsync"],
         ["resendEnrollmentInvite"] = ["Enrollments.ResendInviteAsync"],
         ["getEnrollment"] = ["Enrollments.GetAsync"],
-        ["listOrgEvents"] = ["Events.ListAsync"],
+        ["listOrgEvents"] = ["Events.ListAsync", "Events.ListAutoPagingAsync"],
         ["batchUpsertLearners"] = ["Learners.BatchUpsertAsync"],
         ["createLearner"] = ["Learners.CreateAsync"],
         ["createLearnerLaunchLink"] = ["Learners.CreateLaunchLinkAsync"],
         ["exportLearners"] = ["Learners.ExportAsync"],
-        ["listLearners"] = ["Learners.ListAsync"],
+        ["listLearners"] = ["Learners.ListAsync", "Learners.ListAutoPagingAsync"],
         ["offboardLearner"] = ["Learners.OffboardAsync"],
         ["remindLearner"] = ["Learners.RemindAsync"],
         ["getLearner"] = ["Learners.GetAsync"],
         ["updateLearner"] = ["Learners.UpdateAsync"],
         ["upsertLearnerByExternalId"] = ["Learners.UpsertByExternalIdAsync"],
-        ["listMembers"] = ["Members.ListAsync"],
+        ["listMembers"] = ["Members.ListAsync", "Members.ListAutoPagingAsync"],
         ["getMember"] = ["Members.GetAsync"],
         ["getOperation"] = ["Operations.GetAsync"],
         ["getPartner"] = ["Partners.GetAsync"],
         ["createPartnerOrganization"] = ["Partners.Organizations.CreateAsync"],
-        ["listPartnerOrganizations"] = ["Partners.Organizations.ListAsync"],
+        ["listPartnerOrganizations"] = ["Partners.Organizations.ListAsync", "Partners.Organizations.ListAutoPagingAsync"],
         ["confirmPaymentMethod"] = ["PaymentMethod.ConfirmAsync"],
         ["removePaymentMethod"] = ["PaymentMethod.DeleteAsync"],
         ["preparePaymentMethod"] = ["PaymentMethod.PrepareAsync"],
         ["getPaymentMethod"] = ["PaymentMethod.GetAsync"],
         ["setupPaymentMethod"] = ["PaymentMethod.SetupAsync"],
         ["createSeatOrder"] = ["SeatOrders.CreateAsync"],
-        ["listSeatOrders"] = ["SeatOrders.ListAsync"],
+        ["listSeatOrders"] = ["SeatOrders.ListAsync", "SeatOrders.ListAutoPagingAsync"],
         ["quoteSeatOrder"] = ["SeatOrders.QuoteAsync"],
         ["getSeatOrder"] = ["SeatOrders.GetAsync"],
         ["getSeatInventory"] = ["Seats.GetAsync"],
         ["createWebhookSubscription"] = ["WebhookSubscriptions.CreateAsync"],
         ["deleteWebhookSubscription"] = ["WebhookSubscriptions.DeleteAsync"],
-        ["listWebhookSubscriptions"] = ["WebhookSubscriptions.ListAsync"],
+        ["listWebhookSubscriptions"] = ["WebhookSubscriptions.ListAsync", "WebhookSubscriptions.ListAutoPagingAsync"],
         ["redriveWebhookSubscription"] = ["WebhookSubscriptions.RedriveAsync"],
         ["getWebhookSubscription"] = ["WebhookSubscriptions.GetAsync"],
         ["testWebhookSubscription"] = ["WebhookSubscriptions.TestAsync"],
@@ -77,6 +78,10 @@ public class GeneratedSurfaceTests
 
     // The token endpoint is the hand-written auth layer, not a service method.
     private static readonly string[] HandWritten = ["createAccessToken"];
+
+    // Hand-written methods on generated services (src/TeachMeHipaa/Extensions),
+    // as Node's and Python's extensions add them.
+    private static readonly string[] Extensions = ["Events.TailAsync"];
 
     private static readonly string Root = RepoRoot.Find();
 
@@ -113,8 +118,10 @@ public class GeneratedSurfaceTests
     [Fact]
     public void TheClientExposesExactlyTheExpectedMethods()
     {
-        Assert.Equal(57, ExpectedNames.Length);
-        Assert.Equal(ExpectedNames, ServiceMethods(typeof(TeachMeHipaaClient), "").Select(entry => entry.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(67, ExpectedNames.Length);
+        Assert.Equal(
+            ExpectedNames.Concat(Extensions).Order(StringComparer.Ordinal),
+            ServiceMethods(typeof(TeachMeHipaaClient), "").Select(entry => entry.Name).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -137,7 +144,13 @@ public class GeneratedSurfaceTests
         Assert.All(ServiceMethods(typeof(TeachMeHipaaClient), ""), entry =>
         {
             var parameters = entry.Method.GetParameters();
-            Assert.Equal(typeof(Task<>), entry.Method.ReturnType.GetGenericTypeDefinition());
+            var returns = entry.Name switch
+            {
+                _ when entry.Name.EndsWith("AutoPagingAsync", StringComparison.Ordinal) => typeof(IAsyncEnumerable<>),
+                "Events.TailAsync" => typeof(EventTail),
+                _ => typeof(Task<>),
+            };
+            Assert.Equal(returns, entry.Method.ReturnType.IsGenericType ? entry.Method.ReturnType.GetGenericTypeDefinition() : entry.Method.ReturnType);
             Assert.Equal(typeof(RequestOptions), parameters[^2].ParameterType);
             Assert.Equal(typeof(CancellationToken), parameters[^1].ParameterType);
             Assert.True(parameters[^1].IsOptional, entry.Name);
@@ -192,6 +205,26 @@ public class GeneratedSurfaceTests
         var list = typeof(LearnerService).GetMethod(nameof(LearnerService.ListAsync))!;
 
         Assert.Equal(typeof(Task<Page<Learner>>), list.ReturnType);
+    }
+
+    [Fact]
+    public void EveryListHasAnAutoPagingSiblingWithTheSameParameters()
+    {
+        var methods = ServiceMethods(typeof(TeachMeHipaaClient), "").ToDictionary(entry => entry.Name, entry => entry.Method);
+        var lists = methods.Where(entry => entry.Value.ReturnType.IsGenericType
+            && entry.Value.ReturnType.GetGenericArguments()[0] is { IsGenericType: true } page
+            && page.GetGenericTypeDefinition() == typeof(Page<>)).ToList();
+
+        Assert.Equal(10, lists.Count);
+        Assert.All(lists, list =>
+        {
+            var sibling = methods[list.Key.Replace("ListAsync", "ListAutoPagingAsync", StringComparison.Ordinal)];
+            var item = list.Value.ReturnType.GetGenericArguments()[0].GetGenericArguments()[0];
+            Assert.Equal(typeof(IAsyncEnumerable<>).MakeGenericType(item), sibling.ReturnType);
+            Assert.Equal(
+                list.Value.GetParameters().Select(parameter => (parameter.Name, parameter.ParameterType, parameter.IsOptional)),
+                sibling.GetParameters().Select(parameter => (parameter.Name, parameter.ParameterType, parameter.IsOptional)));
+        });
     }
 
     private static string DotNetName(IEnumerable<string> resourcePath, string method)

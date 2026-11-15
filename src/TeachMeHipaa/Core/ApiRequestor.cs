@@ -23,6 +23,9 @@ internal sealed class ApiRequestor
         _organization = new OrganizationBinding(config.OrganizationId, LookUpOrganizationAsync);
     }
 
+    /// <summary>The client's clock, for waits outside the handler pipeline.</summary>
+    public TimeProvider TimeProvider => _config.TimeProvider;
+
     /// <summary>Sends a call whose success response is a JSON object.</summary>
     public async Task<T> RequestAsync<T>(
         ApiRequest request,
@@ -41,6 +44,35 @@ internal sealed class ApiRequestor
 
         value.LastResponse = TeachMeHipaaResponse.From(response);
         return value;
+    }
+
+    /// <summary>
+    /// Sends a list call. The page fetches the next one with the same
+    /// request, only its position changed, so filters, limit and
+    /// <paramref name="requestOptions"/> carry over.
+    /// </summary>
+    public async Task<Page<T>> RequestPageAsync<T>(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        JsonTypeInfo<PageEnvelope<T>> typeInfo,
+        PagePosition<T> position,
+        CancellationToken cancellationToken)
+    {
+        var envelope = await RequestAsync(request, requestOptions, typeInfo, cancellationToken).ConfigureAwait(false);
+        return new Page<T>
+        {
+            Items = envelope.Items,
+            NextCursor = envelope.NextCursor,
+            LastResponse = envelope.LastResponse,
+            FetchNext = envelope.NextCursor is { } nextCursor
+                ? token => RequestPageAsync(
+                    request with { Query = WithParameter(request.Query, position.Parameter, position.NextPosition(envelope.Items, nextCursor)) },
+                    requestOptions,
+                    typeInfo,
+                    position,
+                    token)
+                : null,
+        };
     }
 
     /// <summary>
@@ -170,6 +202,12 @@ internal sealed class ApiRequestor
             Headers = introspection.LastResponse?.Headers ?? new Dictionary<string, string>(),
         };
     }
+
+    private static KeyValuePair<string, string?>[] WithParameter(
+        IEnumerable<KeyValuePair<string, string?>>? query,
+        string name,
+        string value) =>
+        [.. (query ?? []).Select(parameter => parameter.Key == name ? new(name, value) : parameter)];
 
     private static string QueryString(IEnumerable<KeyValuePair<string, string?>>? query)
     {

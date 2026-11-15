@@ -131,6 +131,34 @@ internal sealed class TypeModel
     public bool GeneratesUnknown(IrType union) =>
         Discriminator(union).Kind == "property" && union.Name != Ir.Events.Envelope;
 
+    /// <summary>
+    /// The fields every member of <paramref name="union"/> declares the same
+    /// way, apart from the discriminator, so the union's base record can
+    /// expose them: an <c>Event</c>'s <c>eventId</c> without a type test.
+    /// </summary>
+    public IReadOnlyList<IrField> SharedFields(IrType union)
+    {
+        if (GeneratesUnknown(union))
+        {
+            // The generated Unknown member carries only the discriminator.
+            return [];
+        }
+
+        var discriminator = Discriminator(union);
+        var members = discriminator.Mapping.Values.Concat(Fallback(union) is { } fallback ? [fallback] : [])
+            .Distinct(StringComparer.Ordinal)
+            .Select(member => Fields(Type(member)))
+            .ToList();
+        return members[0]
+            .Where(field => field.Name != discriminator.Property
+                && members.All(fields => fields.Any(other => other with { Description = null } == field with { Description = null })))
+            .Select(field => field with
+            {
+                Description = members.SelectMany(fields => fields).FirstOrDefault(other => other.Name == field.Name && other.Description is not null)?.Description,
+            })
+            .ToList();
+    }
+
     public bool IsEnum(TypeRef type) => type.Kind == "ref" && Type(Name(type)).Kind == "enum";
 
     public bool IsUnion(TypeRef type) => type.Kind == "ref" && Type(Name(type)).Kind == "union";

@@ -10,21 +10,9 @@ namespace TeachMeHipaa;
 /// <remarks>One kind of <see cref="Event"/>.</remarks>
 public sealed record EventInviteBounced : Event
 {
-    /// <summary>The <c>eventId</c> field.</summary>
-    [JsonPropertyName("eventId")]
-    public string EventId { get; init; } = string.Empty;
-
     /// <summary>Always <c>invite.bounced</c>.</summary>
     [JsonPropertyName("eventType")]
     public string EventType { get; } = "invite.bounced";
-
-    /// <summary>The <c>orgId</c> field.</summary>
-    [JsonPropertyName("orgId")]
-    public string OrgId { get; init; } = string.Empty;
-
-    /// <summary>The <c>occurredAt</c> field.</summary>
-    [JsonPropertyName("occurredAt")]
-    public DateTimeOffset OccurredAt { get; init; }
 
     /// <summary>The <c>data</c> field.</summary>
     [JsonPropertyName("data")]

@@ -99,6 +99,7 @@ internal sealed class ModelWriter(TypeModel model)
         var discriminator = union is null ? null : model.Type(union).Discriminator;
         var tag = model.Tags.GetValueOrDefault(type.Name);
         var pinned = model.Pinned.GetValueOrDefault(type.Name) ?? [];
+        var shared = union is null ? [] : model.SharedFields(model.Type(union)).Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
 
         code.Summary(Describe(type.Description, $"The API's <c>{type.Name}</c> object."));
         if (union is not null)
@@ -108,7 +109,8 @@ internal sealed class ModelWriter(TypeModel model)
 
         code.Open($"public sealed record {type.Name} : {baseType}");
         CheckUnique(type.Name, fields.Select(field => Property(field.Name, type.Name)));
-        foreach (var field in fields)
+        // Fields every member of the union shares live on the union's base record.
+        foreach (var field in fields.Where(field => !shared.Contains(field.Name)))
         {
             var name = Property(field.Name, type.Name);
             if (tag is not null && field.Name == discriminator?.Property)
@@ -228,6 +230,14 @@ internal sealed class ModelWriter(TypeModel model)
         code.Line($"[JsonConverter(typeof({union.Name}JsonConverter))]");
         code.Open($"public abstract record {union.Name} : TeachMeHipaaEntity");
         code.Open($"private protected {union.Name}()").Close();
+        foreach (var field in model.SharedFields(union))
+        {
+            code.Line();
+            code.Summary(Describe(field.Description, $"The <c>{field.Name}</c> field."));
+            code.Line($"[JsonPropertyName({Code.Literal(field.Name)})]");
+            code.Line($"public {Declaration(field.Type, field.Required, field.Nullable, Property(field.Name, union.Name), "get; init;")}");
+        }
+
         code.Close();
         code.Line();
 

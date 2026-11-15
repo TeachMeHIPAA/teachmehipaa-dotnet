@@ -168,14 +168,14 @@ public sealed class LearnerService
     /// <param name="options">The call's parameters.</param>
     /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>One page of results, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>One page of results, with <see cref="TeachMeHipaaEntity.LastResponse"/> set. Iterate it with <c>await foreach</c> for every item across pages.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Page<Learner>> ListAsync(
         LearnerListOptions? options = null,
         RequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
-        return _requestor.RequestAsync(
+        return _requestor.RequestPageAsync(
             new ApiRequest(HttpMethod.Get, "/learners")
             {
                 OrganizationScoped = true,
@@ -183,8 +183,24 @@ public sealed class LearnerService
                 Query = [new("limit", QueryValue.From(options?.Limit)), new("cursor", options?.Cursor), new("email", options?.Email), new("externalId", options?.ExternalId), new("status", options?.Status?.Value), new("courseId", options?.CourseId)],
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.PageLearner,
+            TeachMeHipaaJsonContext.Default.PageEnvelopeLearner,
+            PagePosition<Learner>.Cursor("cursor"),
             cancellationToken);
+    }
+
+    /// <summary>List all learners. Iterates every page.</summary>
+    /// <remarks>Iterates every item across pages, following <c>nextCursor</c> until it is null; the first page is fetched when iteration starts and each later page only when you reach it, so breaking out of the loop fetches nothing more. Equivalent to <c>(await ListAsync(...)).AutoPagingAsync()</c>.</remarks>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the iteration with an <see cref="OperationCanceledException"/>.</param>
+    /// <returns>Every <see cref="Learner"/> in the list, fetched lazily.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused a page's request or could not be reached.</exception>
+    public IAsyncEnumerable<Learner> ListAutoPagingAsync(
+        LearnerListOptions? options = null,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        return AutoPaging.Of(token => ListAsync(options, requestOptions, token), cancellationToken);
     }
 
     /// <summary>Offboard a learner.</summary>

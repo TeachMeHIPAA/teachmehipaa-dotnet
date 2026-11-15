@@ -17,6 +17,18 @@ public abstract record Event : TeachMeHipaaEntity
     private protected Event()
     {
     }
+
+    /// <summary>The <c>eventId</c> field.</summary>
+    [JsonPropertyName("eventId")]
+    public string EventId { get; init; } = string.Empty;
+
+    /// <summary>The <c>orgId</c> field.</summary>
+    [JsonPropertyName("orgId")]
+    public string OrgId { get; init; } = string.Empty;
+
+    /// <summary>The <c>occurredAt</c> field.</summary>
+    [JsonPropertyName("occurredAt")]
+    public DateTimeOffset OccurredAt { get; init; }
 }
 
 internal sealed class EventJsonConverter : JsonConverter<Event>

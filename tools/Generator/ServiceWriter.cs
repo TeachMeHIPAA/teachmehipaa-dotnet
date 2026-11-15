@@ -11,6 +11,13 @@ internal sealed partial class ServiceWriter
 {
     private const string OrganizationPrefix = "/organizations/{orgId}";
 
+    // The Event log pages by the last Event's id (api-sdk-surface.md §4).
+    private const string AfterPositionField = "eventId";
+
+    // Services a hand-written partial in src/TeachMeHipaa/Extensions extends,
+    // outside the directories the generator owns.
+    private static readonly HashSet<string> ExtendedServices = new(StringComparer.Ordinal) { "EventService" };
+
     private readonly TypeModel _model;
     private readonly ModelWriter _types;
     private readonly SortedDictionary<string, ResourceNode> _roots = new(StringComparer.Ordinal);
@@ -38,6 +45,12 @@ internal sealed partial class ServiceWriter
             .SelectMany(node => node.Methods.Select(method => method.OptionsClass).Append(node.ClassName))
             .OfType<string>()
             .ToList();
+        var services = _roots.Values.SelectMany(root => root.Walk()).Select(node => node.ClassName).ToHashSet(StringComparer.Ordinal);
+        if (ExtendedServices.FirstOrDefault(service => !services.Contains(service)) is { } missing)
+        {
+            throw new GeneratorException($"ExtendedServices names {missing}, which the IR no longer has");
+        }
+
         var clash = generated.GroupBy(name => name, StringComparer.Ordinal)
             .FirstOrDefault(group => group.Count() > 1 || _model.Types.ContainsKey(group.Key));
         if (clash is not null)
@@ -141,7 +154,13 @@ internal sealed partial class ServiceWriter
 
         if (method.Response.Kind == "page")
         {
-            _serialized.Add($"Page<{PageItem(method)}>");
+            var pagination = method.Pagination!;
+            if (!plan.Fields.Any(field => field is { Kind: FieldKind.Query, Type: { Kind: "primitive", Type: "string" } } && field.Wire == pagination.CursorParam))
+            {
+                throw new GeneratorException($"{operation}: the cursor parameter {pagination.CursorParam} is not a string query parameter");
+            }
+
+            _serialized.Add($"PageEnvelope<{PageItem(method)}>");
         }
 
         return plan;
@@ -242,10 +261,32 @@ internal sealed partial class ServiceWriter
         return item.Kind == "ref" ? _types.CsType(item) : throw new GeneratorException($"{method.OperationId}: page items are not a model");
     }
 
+    private string PagePosition(IrMethod method, string item)
+    {
+        var pagination = method.Pagination!;
+        var parameter = Code.Literal(pagination.CursorParam);
+        switch (pagination.Style)
+        {
+            case "cursor":
+                return $"PagePosition<{item}>.Cursor({parameter})";
+            case "after":
+                var type = _model.Type(TypeModel.Name(pagination.ItemType));
+                var fields = type.Kind == "union" ? _model.SharedFields(type) : TypeModel.Fields(type);
+                if (!fields.Any(field => field is { Name: AfterPositionField, Required: true, Nullable: false, Type: { Kind: "primitive", Type: "string" } }))
+                {
+                    throw new GeneratorException($"{method.OperationId}: pages after items with no required string {AfterPositionField}");
+                }
+
+                return $"PagePosition<{item}>.After({parameter}, static item => item.{ModelWriter.Property(AfterPositionField, item)})";
+            default:
+                throw new GeneratorException($"{method.OperationId}: no rule for {pagination.Style} pagination");
+        }
+    }
+
     private string ServiceFile(ResourceNode node) => Code.File([], code =>
     {
         code.Summary($"Calls the Developer API's {node.Title} endpoints.");
-        code.Open($"public sealed class {node.ClassName}");
+        code.Open($"public sealed {(ExtendedServices.Contains(node.ClassName) ? "partial " : "")}class {node.ClassName}");
         code.Line("private readonly ApiRequestor _requestor;").Line();
         if (node.Children.Count == 0)
         {
@@ -273,6 +314,11 @@ internal sealed partial class ServiceWriter
         {
             code.Line();
             Method(code, method);
+            if (method.Method.Response.Kind == "page")
+            {
+                code.Line();
+                AutoPagingMethod(code, method);
+            }
         }
 
         code.Close();
@@ -288,7 +334,57 @@ internal sealed partial class ServiceWriter
             code.Line($"/// <remarks>{Code.Doc(method.Description)}</remarks>");
         }
 
-        foreach (var parameter in method.PathParams)
+        Parameters(code, plan);
+        code.Line("/// <param name=\"cancellationToken\">Cancels the call.</param>");
+        code.Line($"/// <returns>{Returns(plan, returnType)}</returns>");
+        code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused the request or could not be reached.</exception>");
+        Signature(code, plan, $"Task<{returnType}>", plan.Name);
+        code.Line("{");
+        code.Indent();
+        Guards(code, plan);
+        code.Line($"return _requestor.{call.Method}(");
+        code.Indent();
+        Request(code, plan);
+        code.Line("requestOptions,");
+        foreach (var argument in call.Arguments)
+        {
+            code.Line($"{argument},");
+        }
+
+        code.Line("cancellationToken);");
+        code.Outdent();
+        code.Close();
+    }
+
+    /// <summary>
+    /// The list method's <c>…AutoPagingAsync</c> sibling, as in Stripe .NET:
+    /// every item across pages as an <see cref="IAsyncEnumerable{T}"/>.
+    /// </summary>
+    private void AutoPagingMethod(Code code, MethodPlan plan)
+    {
+        var method = plan.Method;
+        var item = PageItem(method);
+        var name = plan.Name[..^"Async".Length] + "AutoPagingAsync";
+        code.Summary($"{(method.Summary is null ? $"Calls <c>{method.OperationId}</c>." : Code.Doc(method.Summary))} Iterates every page.");
+        code.Line($"/// <remarks>Iterates every item across pages, following <c>nextCursor</c> until it is null; the first page is fetched when iteration starts and each later page only when you reach it, so breaking out of the loop fetches nothing more. Equivalent to <c>(await {plan.Name}(...)).AutoPagingAsync()</c>.</remarks>");
+        Parameters(code, plan);
+        code.Line("/// <param name=\"cancellationToken\">Cancels the iteration with an <see cref=\"OperationCanceledException\"/>.</param>");
+        code.Line($"/// <returns>Every <see cref=\"{item}\"/> in the list, fetched lazily.</returns>");
+        code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused a page's request or could not be reached.</exception>");
+        Signature(code, plan, $"IAsyncEnumerable<{item}>", name);
+        code.Line("{");
+        code.Indent();
+        Guards(code, plan);
+        var arguments = method.PathParams.Select(parameter => Naming.Parameter(parameter.Name))
+            .Concat(plan.OptionsClass is null ? [] : ["options"])
+            .Concat(["requestOptions", "token"]);
+        code.Line($"return AutoPaging.Of(token => {plan.Name}({string.Join(", ", arguments)}), cancellationToken);");
+        code.Close();
+    }
+
+    private static void Parameters(Code code, MethodPlan plan)
+    {
+        foreach (var parameter in plan.Method.PathParams)
         {
             var description = parameter.Description is null ? $"The <c>{parameter.Name}</c>." : Code.Doc(parameter.Description);
             code.Line($"/// <param name=\"{parameter.Name}\">{description}</param>");
@@ -300,12 +396,13 @@ internal sealed partial class ServiceWriter
         }
 
         code.Line("/// <param name=\"requestOptions\">Per-call settings, such as a request id or your own Idempotency-Key.</param>");
-        code.Line("/// <param name=\"cancellationToken\">Cancels the call.</param>");
-        code.Line($"/// <returns>{Returns(plan, returnType)}</returns>");
-        code.Line("/// <exception cref=\"TeachMeHipaaException\">The API refused the request or could not be reached.</exception>");
-        code.Line($"public Task<{returnType}> {plan.Name}(");
+    }
+
+    private static void Signature(Code code, MethodPlan plan, string returnType, string name)
+    {
+        code.Line($"public {returnType} {name}(");
         code.Indent();
-        foreach (var parameter in method.PathParams)
+        foreach (var parameter in plan.Method.PathParams)
         {
             code.Line($"string {Naming.Parameter(parameter.Name)},");
         }
@@ -318,9 +415,11 @@ internal sealed partial class ServiceWriter
         code.Line("RequestOptions? requestOptions = null,");
         code.Line("CancellationToken cancellationToken = default)");
         code.Outdent();
-        code.Line("{");
-        code.Indent();
-        foreach (var parameter in method.PathParams)
+    }
+
+    private static void Guards(Code code, MethodPlan plan)
+    {
+        foreach (var parameter in plan.Method.PathParams)
         {
             var name = Naming.Parameter(parameter.Name);
             code.Open($"if (string.IsNullOrEmpty({name}))");
@@ -336,19 +435,6 @@ internal sealed partial class ServiceWriter
             code.Close();
             code.Line();
         }
-
-        code.Line($"return _requestor.{call.Method}(");
-        code.Indent();
-        Request(code, plan);
-        code.Line("requestOptions,");
-        foreach (var argument in call.Arguments)
-        {
-            code.Line($"{argument},");
-        }
-
-        code.Line("cancellationToken);");
-        code.Outdent();
-        code.Close();
     }
 
     private void Request(Code code, MethodPlan plan)
@@ -503,7 +589,7 @@ internal sealed partial class ServiceWriter
                 return (type.Name, new Call("RequestAsync", [$"TeachMeHipaaJsonContext.Default.{type.Name}"]));
             case "page":
                 var item = PageItem(method);
-                return ($"Page<{item}>", new Call("RequestAsync", [$"TeachMeHipaaJsonContext.Default.Page{item}"]));
+                return ($"Page<{item}>", new Call("RequestPageAsync", [$"TeachMeHipaaJsonContext.Default.PageEnvelope{item}", PagePosition(method, item)]));
             case "writeResult":
                 var result = _model.Type(TypeModel.Name(response.Type));
                 if (!TypeModel.Fields(result).Any(field => field is { Name: "created", Type: { Kind: "primitive", Type: "boolean" } }))
@@ -525,7 +611,7 @@ internal sealed partial class ServiceWriter
 
     private static string Returns(MethodPlan plan, string returnType) => plan.Method.Response.Kind switch
     {
-        "page" => "One page of results, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set.",
+        "page" => "One page of results, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set. Iterate it with <c>await foreach</c> for every item across pages.",
         "writeResult" => $"The <see cref=\"{returnType}\"/>, with <see cref=\"TeachMeHipaaEntity.LastResponse\"/> set; <c>Created</c> is true when this call created it (201) and false when it already existed (200).",
         "empty" => "What the API said about the response: status, headers and request id.",
         "binary" => "The file's bytes, content type and file name.",
