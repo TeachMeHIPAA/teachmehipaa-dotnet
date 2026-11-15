@@ -64,9 +64,9 @@ public class OrganizationBindingTests
                 ProblemReply(503, """{"title":"Service Unavailable","status":503,"code":"temporarily_unavailable"}"""),
                 IntrospectionReply())
             .Script(LearnerRoute, LearnerReply());
-        var client = NewClient(handler, organizationId: null);
+        var client = NewClient(handler, organizationId: null, maxRetries: 0);
 
-        var error = await Assert.ThrowsAsync<TeachMeHipaaException>(() => client.Learners.GetAsync(LearnerId));
+        var error = await Assert.ThrowsAsync<ApiException>(() => client.Learners.GetAsync(LearnerId));
         var learner = await client.Learners.GetAsync(LearnerId);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);

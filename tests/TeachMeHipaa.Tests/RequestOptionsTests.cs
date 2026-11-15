@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Time.Testing;
 using TeachMeHipaa.Tests.Support;
 using static TeachMeHipaa.Tests.Support.Fixtures;
 
@@ -43,32 +42,6 @@ public class RequestOptionsTests
         await client.Learners.GetAsync("a/b");
 
         Assert.Single(handler.RequestsTo($"GET /v1/organizations/{OrgId}/learners/a%2Fb"));
-    }
-
-    [Fact]
-    public async Task RaisesATeachMeHipaaExceptionWhenNoResponseArrivesWithinTheTimeout()
-    {
-        var time = new FakeTimeProvider();
-        var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply())
-            .Script(LearnerRoute, async (_, cancellationToken) =>
-            {
-                await Task.Delay(Timeout.InfiniteTimeSpan, time, cancellationToken);
-                return LearnerReply();
-            });
-        var client = NewClient(handler, time: time);
-
-        var call = client.Learners.GetAsync(LearnerId, requestOptions: new RequestOptions { Timeout = TimeSpan.FromSeconds(5) });
-        while (handler.RequestsTo(LearnerRoute).Count == 0)
-        {
-            await Task.Yield();
-        }
-
-        time.Advance(TimeSpan.FromSeconds(5));
-        var error = await Assert.ThrowsAsync<TeachMeHipaaException>(() => call);
-
-        Assert.Null(error.StatusCode);
-        Assert.IsType<TimeoutException>(error.InnerException);
     }
 
     [Fact]

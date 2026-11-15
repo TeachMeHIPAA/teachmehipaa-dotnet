@@ -17,6 +17,17 @@ public sealed record ScriptedReply
 
     /// <summary>Raw body text with no default content type.</summary>
     public string? Body { get; init; }
+
+    /// <summary>Thrown instead of answering, as a transport does when the network fails.</summary>
+    public Exception? Throws { get; init; }
+
+    /// <summary>Thrown while the body is read, as when the connection drops mid-response.</summary>
+    public Exception? BodyThrows { get; init; }
+
+    /// <summary>Never answers; the request ends only when it is cancelled.</summary>
+    public bool Hangs { get; init; }
+
+    public static ScriptedReply NeverAnswers { get; } = new() { Hangs = true };
 }
 
 /// <summary>What the client put on the wire, captured when it was sent.</summary>
@@ -72,6 +83,16 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         }
 
         var reply = await step(recorded, cancellationToken);
+        if (reply.Hangs)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        if (reply.Throws is not null)
+        {
+            throw reply.Throws;
+        }
+
         return ToResponse(reply, request);
     }
 
@@ -105,7 +126,9 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         var response = new HttpResponseMessage(reply.Status)
         {
             RequestMessage = request,
-            Content = new ByteArrayContent(text is null ? [] : Encoding.UTF8.GetBytes(text)),
+            Content = reply.BodyThrows is null
+                ? new ByteArrayContent(text is null ? [] : Encoding.UTF8.GetBytes(text))
+                : new FailingContent(reply.BodyThrows),
         };
         if (reply.Json is not null && !reply.Headers.Keys.Any(IsContentType))
         {
@@ -125,4 +148,17 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
 
     private static bool IsContentType(string name) =>
         string.Equals(name, "Content-Type", StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>A response body whose read fails part-way, like a dropped connection.</summary>
+internal sealed class FailingContent(Exception failure) : HttpContent
+{
+    protected override Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context) =>
+        Task.FromException(failure);
+
+    protected override bool TryComputeLength(out long length)
+    {
+        length = 0;
+        return false;
+    }
 }

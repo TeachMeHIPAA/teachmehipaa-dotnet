@@ -65,7 +65,8 @@ public static class Fixtures
     public static TeachMeHipaaClient NewClient(
         FakeHttpMessageHandler handler,
         string? organizationId = OrgId,
-        FakeTimeProvider? time = null) =>
+        FakeTimeProvider? time = null,
+        int maxRetries = 2) =>
         new(new TeachMeHipaaClientOptions
         {
             ClientId = ClientId,
@@ -73,5 +74,6 @@ public static class Fixtures
             OrganizationId = organizationId,
             HttpMessageHandler = handler,
             TimeProvider = time,
+            MaxRetries = maxRetries,
         });
 }

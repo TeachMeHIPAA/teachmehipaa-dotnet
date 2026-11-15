@@ -22,58 +22,91 @@ internal sealed class ApiRequestor
         _organization = new OrganizationBinding(config.OrganizationId, LookUpOrganizationAsync);
     }
 
-    /// <param name="method">The HTTP method.</param>
-    /// <param name="path">The path below the base URL, with path parameters already escaped.</param>
-    /// <param name="organizationScoped">Whether to prefix the path with <c>/organizations/{orgId}</c>.</param>
-    /// <param name="query">Query parameters; null values are left out.</param>
-    /// <param name="requestOptions">The caller's per-call settings.</param>
-    /// <param name="typeInfo">How to read the response body.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <summary>Sends a call whose success response is a JSON object.</summary>
     public async Task<T> RequestAsync<T>(
-        HttpMethod method,
-        string path,
-        bool organizationScoped,
-        IEnumerable<KeyValuePair<string, string?>>? query,
+        ApiRequest request,
         RequestOptions? requestOptions,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken)
         where T : TeachMeHipaaEntity
     {
-        var fullPath = organizationScoped
-            ? $"/organizations/{Uri.EscapeDataString(await _organization.GetOrganizationIdAsync(cancellationToken).ConfigureAwait(false))}{path}"
-            : path;
-        using var request = new HttpRequestMessage(method, new Uri($"{_config.BaseUrl}{fullPath}{QueryString(query)}"));
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
-        if (requestOptions?.RequestId is { } requestId)
-        {
-            request.Headers.TryAddWithoutValidation("x-request-id", requestId);
-        }
-
-        if (requestOptions?.Timeout is { } timeout)
-        {
-            RequestTimeout.Set(request, timeout);
-        }
-
-        using var response = await _api.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
         var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
         var value = response.IsSuccessStatusCode ? ResponseReader.Parse(response, text, typeInfo) : null;
         if (value is null)
         {
-            throw ResponseReader.ApiError(response, text);
+            throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
         }
 
         value.LastResponse = TeachMeHipaaResponse.From(response);
         return value;
     }
 
+    /// <summary>Sends a call whose success response has no body, such as a 204 from a DELETE.</summary>
+    public async Task<TeachMeHipaaResponse> RequestAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
+        var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
+        // A body is ignored only when it is JSON: an HTML page still means a wrong base URL.
+        if (!response.IsSuccessStatusCode || (text.Length > 0 && !ResponseReader.IsJson(response)))
+        {
+            throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+        }
+
+        return TeachMeHipaaResponse.From(response);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        CancellationToken cancellationToken)
+    {
+        var path = request.OrganizationScoped
+            ? $"/organizations/{Uri.EscapeDataString(await _organization.GetOrganizationIdAsync(cancellationToken).ConfigureAwait(false))}{request.Path}"
+            : request.Path;
+        using var message = new HttpRequestMessage(request.Method, new Uri($"{_config.BaseUrl}{path}{QueryString(request.Query)}"));
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        message.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
+        // Fixed once per call, so every retry and the 401 replay send the same key.
+        var idempotencyKey = requestOptions?.IdempotencyKey
+            ?? (request.IdempotencyKeyRequired ? Guid.NewGuid().ToString() : null);
+        if (idempotencyKey is not null)
+        {
+            message.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
+        }
+
+        if (requestOptions?.RequestId is { } requestId)
+        {
+            message.Headers.TryAddWithoutValidation("x-request-id", requestId);
+        }
+
+        if (request.Body is { } body)
+        {
+            message.Content = new ByteArrayContent(body.Content);
+            message.Content.Headers.ContentType = new MediaTypeHeaderValue(body.ContentType);
+        }
+
+        if (requestOptions?.Timeout is { } timeout)
+        {
+            RequestProperties.Timeout.Set(message, timeout);
+        }
+
+        if (requestOptions?.MaxRetries is { } maxRetries)
+        {
+            RequestProperties.MaxRetries.Set(message, maxRetries);
+        }
+
+        RequestProperties.RetrySafe.Set(message, request.RetrySafe);
+        return await _api.SendAsync(message, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<string> LookUpOrganizationAsync(CancellationToken cancellationToken)
     {
         var introspection = await RequestAsync(
-            HttpMethod.Get,
-            "/auth/introspection",
-            organizationScoped: false,
-            query: null,
+            new ApiRequest(HttpMethod.Get, "/auth/introspection") { RetrySafe = true },
             requestOptions: null,
             CoreJsonContext.Default.OrganizationIntrospection,
             cancellationToken).ConfigureAwait(false);

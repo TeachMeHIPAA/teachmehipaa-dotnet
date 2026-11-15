@@ -12,4 +12,17 @@ public sealed class RequestOptions
 
     /// <summary>How long to wait for each response; overrides the client's <see cref="TeachMeHipaaClientOptions.Timeout"/>.</summary>
     public TimeSpan? Timeout { get; set; }
+
+    /// <summary>
+    /// Retries for this call if it fails transiently; overrides the client's
+    /// <see cref="TeachMeHipaaClientOptions.MaxRetries"/>. Only requests that
+    /// are safe to replay are ever retried.
+    /// </summary>
+    public int? MaxRetries { get; set; }
+
+    /// <summary>
+    /// Replaces the generated <c>Idempotency-Key</c>. Reuse one key to make a
+    /// call you repeat yourself, such as a sync job's replay, run at most once.
+    /// </summary>
+    public string? IdempotencyKey { get; set; }
 }

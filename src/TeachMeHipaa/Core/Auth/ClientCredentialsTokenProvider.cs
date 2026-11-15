@@ -58,6 +58,15 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         }
     }
 
+    public void Invalidate(string accessToken)
+    {
+        var current = _current;
+        if (current?.AccessToken == accessToken)
+        {
+            Interlocked.CompareExchange(ref _current, null, current);
+        }
+    }
+
     private bool IsFresh(CachedToken token) =>
         _config.TimeProvider.GetUtcNow() < token.ExpiresAt - RemintMargin;
 
@@ -77,6 +86,7 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", _basicCredentials);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
+        RequestProperties.RetrySafe.Set(request, true);
 
         // Expiry counts from when the request left, so a slow response can't
         // stretch the token past its real lifetime.
@@ -88,7 +98,7 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
             : null;
         if (token is not { AccessToken.Length: > 0, ExpiresIn: > 0 })
         {
-            throw ResponseReader.OAuthError(response, text);
+            throw ResponseReader.OAuthError(response, text, _config.TimeProvider.GetUtcNow());
         }
 
         return new CachedToken(token.AccessToken, requestedAt + TimeSpan.FromSeconds(token.ExpiresIn.Value));

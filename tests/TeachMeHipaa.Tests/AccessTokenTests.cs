@@ -74,7 +74,7 @@ public class AccessTokenTests
             .Script(LearnerRoute, LearnerReply());
         var client = NewClient(handler);
 
-        var error = await Assert.ThrowsAsync<TeachMeHipaaException>(() => client.Learners.GetAsync(LearnerId));
+        var error = await Assert.ThrowsAsync<OAuthException>(() => client.Learners.GetAsync(LearnerId));
         var learner = await client.Learners.GetAsync(LearnerId);
 
         Assert.Equal(HttpStatusCode.Unauthorized, error.StatusCode);
