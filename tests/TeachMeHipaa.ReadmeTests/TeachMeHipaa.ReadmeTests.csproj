@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Keeps the README honest. Before compiling, Tasks/ExtractReadmeSamples.cs
+    turns every ```csharp block in README.md into a method (or, for a block
+    that declares types, those types) in obj/ReadmeSamples.g.cs, so a
+    sample that no longer compiles fails the build, pointing at its README
+    line. ReadmeTests.cs then runs each sample against the fake transport.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Needed for IDE0005 (unused usings) on build; tests carry no XML docs. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <ReadmePath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../README.md'))</ReadmePath>
+    <ReadmeSamplesFile>$(BaseIntermediateOutputPath)ReadmeSamples.g.cs</ReadmeSamplesFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The webhook and dependency injection samples are ASP.NET Core code. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TeachMeHipaa\TeachMeHipaa.csproj" />
+    <Compile Include="..\TeachMeHipaa.Tests\Support\FakeHttpMessageHandler.cs" Link="Support\FakeHttpMessageHandler.cs" />
+    <Compile Include="..\TeachMeHipaa.Tests\Support\Fixtures.cs" Link="Support\Fixtures.cs" />
+    <!-- The extractor is an MSBuild task, not part of the test assembly. -->
+    <Compile Remove="Tasks\**" />
+    <None Include="Tasks\**" />
+  </ItemGroup>
+
+  <UsingTask
+    TaskName="ExtractReadmeSamples"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Readme ParameterType="System.String" Required="true" />
+      <Output ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)Tasks/ExtractReadmeSamples.cs" />
+    </Task>
+  </UsingTask>
+
+  <Target
+    Name="GenerateReadmeSamples"
+    Inputs="$(ReadmePath);$(MSBuildThisFileDirectory)Tasks/ExtractReadmeSamples.cs"
+    Outputs="$(ReadmeSamplesFile)">
+    <ExtractReadmeSamples Readme="$(ReadmePath)" Output="$(ReadmeSamplesFile)" />
+  </Target>
+
+  <!-- Also runs in design-time builds, so editors and dotnet format see the samples. -->
+  <Target Name="IncludeReadmeSamples" BeforeTargets="CoreCompile" DependsOnTargets="GenerateReadmeSamples">
+    <ItemGroup>
+      <Compile Include="$(ReadmeSamplesFile)" />
+      <FileWrites Include="$(ReadmeSamplesFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

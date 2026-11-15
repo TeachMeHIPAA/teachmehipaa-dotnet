@@ -215,6 +215,16 @@ internal sealed class ApiRequestor
         CancellationToken cancellationToken,
         bool streamResponse = false)
     {
+        // Checked before the Organization lookup, which needs a token too.
+        if (request.Authenticated && !_config.CanAuthenticate)
+        {
+            var endpoint = $"{request.Method.Method} {(request.OrganizationScoped ? "/organizations/{orgId}" : string.Empty)}{request.Path}";
+            throw new InvalidOperationException(
+                $"{endpoint} needs an Access token, and this client has no credentials. Create the client with "
+                    + $"{nameof(TeachMeHipaaClientOptions)}.{nameof(TeachMeHipaaClientOptions.ClientId)} and "
+                    + $"{nameof(TeachMeHipaaClientOptions.ClientSecret)}, or a {nameof(TeachMeHipaaClientOptions.TokenProvider)}.");
+        }
+
         var path = request.OrganizationScoped
             ? $"/organizations/{Uri.EscapeDataString(await _organization.GetOrganizationIdAsync(cancellationToken).ConfigureAwait(false))}{request.Path}"
             : request.Path;

@@ -3,8 +3,9 @@ using Microsoft.Extensions.Logging;
 namespace TeachMeHipaa;
 
 /// <summary>
-/// The validated, copied settings a client runs with. Exactly one of
-/// <see cref="Credentials"/> and <see cref="TokenProvider"/> is set.
+/// The validated, copied settings a client runs with. At most one of
+/// <see cref="Credentials"/> and <see cref="TokenProvider"/> is set; with
+/// neither, the client makes only public calls.
 /// </summary>
 internal sealed record ClientConfiguration(
     ClientCredentials? Credentials,
@@ -27,8 +28,12 @@ internal sealed record ClientConfiguration(
         }
 
         var baseUrl = Checks.ResolveBaseUrl(options.Environment, options.BaseUrl);
+        // Half a credential pair is a mistake, not a request for a public client.
+        var credentialsGiven = !string.IsNullOrEmpty(options.ClientId)
+            || !string.IsNullOrEmpty(options.ClientSecret)
+            || options.Scopes is not null;
         return new ClientConfiguration(
-            Credentials: options.TokenProvider is null
+            Credentials: options.TokenProvider is null && credentialsGiven
                 ? new ClientCredentials(
                     Checks.RequireText(options.ClientId, nameof(options.ClientId)),
                     Checks.RequireText(options.ClientSecret, nameof(options.ClientSecret)),
@@ -47,6 +52,9 @@ internal sealed record ClientConfiguration(
             TimeProvider: options.TimeProvider ?? TimeProvider.System,
             Logger: options.Logger);
     }
+
+    /// <summary>Whether the client can get an Access token, so make authenticated calls.</summary>
+    public bool CanAuthenticate => Credentials is not null || TokenProvider is not null;
 
     private static ITokenProvider CheckTokenProvider(TeachMeHipaaClientOptions options, string baseUrl)
     {

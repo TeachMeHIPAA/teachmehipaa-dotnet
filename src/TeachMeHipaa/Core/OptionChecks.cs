@@ -66,6 +66,6 @@ internal sealed class OptionChecks(string owner)
         }
 
         return httpMessageHandler
-            ?? (httpClient is null ? SharedHttpHandler.Instance : new HttpClientSendingHandler(httpClient));
+            ?? (httpClient is null ? SharedHttpHandler.Instance : new HttpClientSendingHandler(() => httpClient));
     }
 }

@@ -109,11 +109,11 @@ public class TokenProviderOptionTests
     }
 
     [Fact]
-    public void WithoutATokenProviderTheCredentialsAreStillRequired()
+    public void WithoutATokenProviderBothCredentialsAreStillRequired()
     {
-        var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions()));
+        var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions { ClientId = ClientId }));
 
-        Assert.Equal(nameof(TeachMeHipaaClientOptions.ClientId), error.ParamName);
+        Assert.Equal(nameof(TeachMeHipaaClientOptions.ClientSecret), error.ParamName);
     }
 
     [Fact]
