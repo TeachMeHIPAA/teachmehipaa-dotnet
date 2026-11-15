@@ -18,6 +18,9 @@ public sealed record ScriptedReply
     /// <summary>Raw body text with no default content type.</summary>
     public string? Body { get; init; }
 
+    /// <summary>Raw body bytes with no default content type, for a file download.</summary>
+    public byte[]? Bytes { get; init; }
+
     /// <summary>Thrown instead of answering, as a transport does when the network fails.</summary>
     public Exception? Throws { get; init; }
 
@@ -127,7 +130,7 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         {
             RequestMessage = request,
             Content = reply.BodyThrows is null
-                ? new ByteArrayContent(text is null ? [] : Encoding.UTF8.GetBytes(text))
+                ? new ByteArrayContent(reply.Bytes ?? (text is null ? [] : Encoding.UTF8.GetBytes(text)))
                 : new FailingContent(reply.BodyThrows),
         };
         if (reply.Json is not null && !reply.Headers.Keys.Any(IsContentType))

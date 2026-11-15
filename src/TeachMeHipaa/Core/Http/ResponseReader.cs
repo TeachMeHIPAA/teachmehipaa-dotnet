@@ -20,6 +20,27 @@ internal static class ResponseReader
 #endif
     }
 
+    public static async Task<byte[]> ReadBytesAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Content is null)
+        {
+            return [];
+        }
+#if NET5_0_OR_GREATER
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+#endif
+    }
+
+    /// <summary>The file name from <c>Content-Disposition</c>, preferring RFC 6266's UTF-8 <c>filename*</c>.</summary>
+    public static string? FileName(HttpResponseMessage response)
+    {
+        var disposition = response.Content?.Headers.ContentDisposition;
+        return (disposition?.FileNameStar ?? disposition?.FileName)?.Trim('"');
+    }
+
     // Unknown paths answer with a 200 HTML page, so a body is parsed only when
     // it claims to be JSON.
     public static bool IsJson(HttpResponseMessage response)
@@ -74,7 +95,7 @@ internal static class ResponseReader
     /// </summary>
     public static TeachMeHipaaException OAuthError(HttpResponseMessage response, string text, DateTimeOffset now)
     {
-        var oauth = Parse(response, text, CoreJsonContext.Default.OAuthTokenError);
+        var oauth = Parse(response, text, CoreJsonContext.Default.TokenEndpointError);
         if (oauth?.Error is null)
         {
             return ApiError(response, text, now);

@@ -1,36 +1,34 @@
+// Generated from openapi/sdk-ir.json by tools/Generator. Do not edit.
+// Regenerate with `dotnet run --project tools/Generator`.
+
 using System.Text.Json.Serialization;
 
 namespace TeachMeHipaa;
 
-/// <summary>Parameters for <see cref="LearnerService.CreateAsync"/> (<c>dev#/components/schemas/LearnerCreateRequest</c>).</summary>
+/// <summary>Parameters for <see cref="LearnerService.CreateAsync"/>.</summary>
 public sealed class LearnerCreateOptions
 {
-    /// <summary>The Learner's email address. Required.</summary>
+    /// <summary>The learner's email address. Required.</summary>
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>The Learner's full name.</summary>
+    /// <summary>The learner's full name.</summary>
     [JsonPropertyName("name")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Name { get; set; }
 
-    /// <summary>Your own id for the Learner, unique within the Organization.</summary>
+    /// <summary>Your own id for the learner, unique within the organization.</summary>
     [JsonPropertyName("externalId")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExternalId { get; set; }
 
-    /// <summary>The Course to invite them to. Defaults to the Organization's default Course.</summary>
+    /// <summary>The course to invite them to. Defaults to the organization's default course.</summary>
     [JsonPropertyName("courseId")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CourseId { get; set; }
 
-    /// <summary><c>email</c> (the default) sends the invite; <c>none</c> sends nothing.</summary>
+    /// <summary><c>email</c> (default) sends the invite email. <c>none</c> sends nothing and returns <c>joinUrl</c> for you to deliver.</summary>
     [JsonPropertyName("delivery")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Delivery { get; set; }
+    public LearnerCreateRequestDelivery? Delivery { get; set; }
 
-    /// <summary><c>require_available</c> fails with a 409 when no Seat is free.</summary>
+    /// <summary><c>require_available</c> fails with <c>409</c> when no seat is free.</summary>
     [JsonPropertyName("seatPolicy")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? SeatPolicy { get; set; }
+    public LearnerCreateRequestSeatPolicy? SeatPolicy { get; set; }
 }

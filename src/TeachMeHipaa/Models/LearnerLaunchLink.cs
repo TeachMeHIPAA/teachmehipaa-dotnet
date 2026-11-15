@@ -1,12 +1,15 @@
+// Generated from openapi/sdk-ir.json by tools/Generator. Do not edit.
+// Regenerate with `dotnet run --project tools/Generator`.
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace TeachMeHipaa;
 
-/// <summary>A one-time URL that signs a Learner straight into their Training (<c>dev#/components/schemas/LearnerLaunchLink</c>).</summary>
+/// <summary>The API's <c>LearnerLaunchLink</c> object.</summary>
 public sealed record LearnerLaunchLink : TeachMeHipaaEntity
 {
-    /// <summary>The single-use sign-in URL. Redirect the Learner to it right away.</summary>
+    /// <summary>The single-use sign-in URL. Redirect the learner to it right away.</summary>
     [JsonPropertyName("url")]
     public string Url { get; init; } = string.Empty;
 

@@ -32,5 +32,7 @@ jobs:
             10.0.x
       - run: dotnet restore
       - run: dotnet format --verify-no-changes --no-restore
+      # The generated services and models must match a fresh run over the vendored IR.
+      - run: dotnet run --project tools/Generator -- --check
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test --no-build --configuration Release

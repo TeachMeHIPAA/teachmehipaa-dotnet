@@ -30,6 +30,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TeachMeHipaa\TeachMeHipaa.csproj" />
+    <!-- The coverage test compares the committed output with a fresh run. -->
+    <ProjectReference Include="..\..\tools\Generator\Generator.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,8 +1,11 @@
+// Generated from openapi/sdk-ir.json by tools/Generator. Do not edit.
+// Regenerate with `dotnet run --project tools/Generator`.
+
 namespace TeachMeHipaa;
 
 /// <summary>Parameters for <see cref="LearnerService.GetAsync"/>.</summary>
 public sealed class LearnerGetOptions
 {
-    /// <summary>The Course. Defaults to the Organization's default Course.</summary>
+    /// <summary>The course. Defaults to the organization's default course.</summary>
     public string? CourseId { get; set; }
 }

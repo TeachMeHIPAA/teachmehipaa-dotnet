@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization.Metadata;
@@ -42,6 +43,47 @@ internal sealed class ApiRequestor
         return value;
     }
 
+    /// <summary>
+    /// Sends a call whose IR response is a <c>writeResult</c>: the body is the
+    /// same whether the call created the object or found it, so
+    /// <paramref name="withCreated"/> records which from the status (201 or 200).
+    /// </summary>
+    public async Task<T> RequestWriteResultAsync<T>(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        JsonTypeInfo<T> typeInfo,
+        Func<T, bool, T> withCreated,
+        CancellationToken cancellationToken)
+        where T : TeachMeHipaaEntity
+    {
+        var result = await RequestAsync(request, requestOptions, typeInfo, cancellationToken).ConfigureAwait(false);
+        return withCreated(result, result.LastResponse?.StatusCode == HttpStatusCode.Created);
+    }
+
+    /// <summary>Sends a call whose success response is a file of the request's <see cref="ApiRequest.Accept"/> type.</summary>
+    public async Task<BinaryResponse> RequestBinaryAsync(
+        ApiRequest request,
+        RequestOptions? requestOptions,
+        CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(request, requestOptions, cancellationToken).ConfigureAwait(false);
+        var contentType = response.Content?.Headers.ContentType?.MediaType;
+        // Unknown paths answer with a 200 HTML page, so only the promised type counts as the file.
+        if (response.IsSuccessStatusCode && string.Equals(contentType, request.Accept, StringComparison.OrdinalIgnoreCase))
+        {
+            return new BinaryResponse
+            {
+                Data = await ResponseReader.ReadBytesAsync(response, cancellationToken).ConfigureAwait(false),
+                ContentType = contentType,
+                FileName = ResponseReader.FileName(response),
+                LastResponse = TeachMeHipaaResponse.From(response),
+            };
+        }
+
+        var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
+        throw ResponseReader.ApiError(response, text, _config.TimeProvider.GetUtcNow());
+    }
+
     /// <summary>Sends a call whose success response has no body, such as a 204 from a DELETE.</summary>
     public async Task<TeachMeHipaaResponse> RequestAsync(
         ApiRequest request,
@@ -68,7 +110,7 @@ internal sealed class ApiRequestor
             ? $"/organizations/{Uri.EscapeDataString(await _organization.GetOrganizationIdAsync(cancellationToken).ConfigureAwait(false))}{request.Path}"
             : request.Path;
         using var message = new HttpRequestMessage(request.Method, new Uri($"{_config.BaseUrl}{path}{QueryString(request.Query)}"));
-        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(request.Accept ?? "application/json"));
         message.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
         // Fixed once per call, so every retry and the 401 replay send the same key.
         var idempotencyKey = requestOptions?.IdempotencyKey
@@ -78,6 +120,11 @@ internal sealed class ApiRequestor
             message.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
         }
 
+        if (requestOptions?.IfMatch is { } ifMatch)
+        {
+            message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
+
         if (requestOptions?.RequestId is { } requestId)
         {
             message.Headers.TryAddWithoutValidation("x-request-id", requestId);
@@ -85,8 +132,7 @@ internal sealed class ApiRequestor
 
         if (request.Body is { } body)
         {
-            message.Content = new ByteArrayContent(body.Content);
-            message.Content.Headers.ContentType = new MediaTypeHeaderValue(body.ContentType);
+            message.Content = body.CreateContent();
         }
 
         if (requestOptions?.Timeout is { } timeout)
@@ -100,6 +146,7 @@ internal sealed class ApiRequestor
         }
 
         RequestProperties.RetrySafe.Set(message, request.RetrySafe);
+        RequestProperties.Authenticated.Set(message, request.Authenticated);
         return await _api.SendAsync(message, cancellationToken).ConfigureAwait(false);
     }
 

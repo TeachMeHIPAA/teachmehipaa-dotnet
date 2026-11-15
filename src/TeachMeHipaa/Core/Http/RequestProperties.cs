@@ -18,6 +18,9 @@ internal static class RequestProperties
     /// are never retried.
     /// </summary>
     public static readonly RequestProperty<bool> RetrySafe = new("TeachMeHipaa.RetrySafe");
+
+    /// <summary>False for public operations, which <see cref="AuthenticationHandler"/> sends without an Access token.</summary>
+    public static readonly RequestProperty<bool> Authenticated = new("TeachMeHipaa.Authenticated");
 }
 
 internal sealed class RequestProperty<T>(string name)

@@ -8,11 +8,17 @@ namespace TeachMeHipaa;
 /// 401 <c>unauthorized</c> (a token revoked mid-flight), it re-mints once and
 /// replays the request. It sits above retries, so the replay never uses one
 /// up; a 401 comes before the API acts, so replaying even a PATCH is safe.
+/// Public operations go out without a token, so none is minted for them.
 /// </summary>
 internal sealed class AuthenticationHandler(ITokenProvider tokenProvider) : DelegatingHandler
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        if (RequestProperties.Authenticated.Get(request) == false)
+        {
+            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
         var replay = await ReplayableRequest.CaptureAsync(request, cancellationToken).ConfigureAwait(false);
         var accessToken = await tokenProvider.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
         var response = await SendWithAsync(replay, accessToken, cancellationToken).ConfigureAwait(false);

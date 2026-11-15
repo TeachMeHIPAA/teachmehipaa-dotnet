@@ -1,20 +1,24 @@
+// Generated from openapi/sdk-ir.json by tools/Generator. Do not edit.
+// Regenerate with `dotnet run --project tools/Generator`.
+
 namespace TeachMeHipaa;
 
-/// <summary>Learners: Members taking a Training, seen from the Organization's side.</summary>
+/// <summary>Calls the Developer API's Learners endpoints.</summary>
 public sealed class LearnerService
 {
     private readonly ApiRequestor _requestor;
 
     internal LearnerService(ApiRequestor requestor) => _requestor = requestor;
 
-    /// <summary>Invites a Learner to a Course.</summary>
-    /// <param name="options">Who to invite, and to which Course.</param>
-    /// <param name="requestOptions">Per-call settings, such as your own Idempotency-Key.</param>
+    /// <summary>Create many learners.</summary>
+    /// <remarks>Creates or retrieves up to 500 learners in one request. Each item works like creating one learner and succeeds or fails on its own.</remarks>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The Learner, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
-    public Task<Learner> CreateAsync(
-        LearnerCreateOptions options,
+    public Task<Operation> BatchUpsertAsync(
+        LearnerBatchUpsertOptions options,
         RequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
@@ -24,6 +28,36 @@ public sealed class LearnerService
         }
 
         return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Post, "/learners:batchUpsert")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IdempotencyKeyRequired = true,
+                Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerBatchUpsertOptions),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.Operation,
+            cancellationToken);
+    }
+
+    /// <summary>Create a learner.</summary>
+    /// <remarks>Adds a person to the organization and invites them to a course in one call, using one seat. If the email or <c>externalId</c> already belongs to an active learner in the course, nothing is created. With <c>delivery: "none"</c>, no email is sent and the response includes a <c>joinUrl</c> for you to deliver.</remarks>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="LearnerWriteResult"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set; <c>Created</c> is true when this call created it (201) and false when it already existed (200).</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<LearnerWriteResult> CreateAsync(
+        LearnerCreateOptions options,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        return _requestor.RequestWriteResultAsync(
             new ApiRequest(HttpMethod.Post, "/learners")
             {
                 OrganizationScoped = true,
@@ -32,16 +66,79 @@ public sealed class LearnerService
                 Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerCreateOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.Learner,
+            TeachMeHipaaJsonContext.Default.LearnerWriteResult,
+            static (result, created) => result with { Created = created },
             cancellationToken);
     }
 
-    /// <summary>Retrieves a Learner's status in one Course.</summary>
-    /// <param name="learnerId">The Learner's id (<c>sub_…</c>).</param>
-    /// <param name="options">Which Course to report on.</param>
-    /// <param name="requestOptions">Per-call settings.</param>
+    /// <summary>Create a launch link.</summary>
+    /// <remarks>Creates a link that opens the course with the learner already signed in, for a "Start training" button in your product. The link works once and expires after 5 minutes: create it when the learner clicks, then redirect them to it. Never email, store or log it. Only for a learner who has accepted their invite.</remarks>
+    /// <param name="learnerId">The learner's canonical subject id (sub_… ULID).</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The Learner, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="LearnerLaunchLink"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<LearnerLaunchLink> CreateLaunchLinkAsync(
+        string learnerId,
+        LearnerCreateLaunchLinkOptions? options = null,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(learnerId))
+        {
+            throw new ArgumentException("A learnerId is required.", nameof(learnerId));
+        }
+
+        return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Post, $"/learners/{Uri.EscapeDataString(learnerId)}:createLaunchLink")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                Query = [new("courseId", options?.CourseId)],
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.LearnerLaunchLink,
+            cancellationToken);
+    }
+
+    /// <summary>Export learners.</summary>
+    /// <remarks>Exports the organization's learners in one course as CSV, optionally only those with one <c>status</c>. Requires the <c>learners:read</c> scope.</remarks>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Operation"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<Operation> ExportAsync(
+        LearnerExportOptions options,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Post, "/learners:export")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IdempotencyKeyRequired = true,
+                Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerExportOptions),
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.Operation,
+            cancellationToken);
+    }
+
+    /// <summary>Retrieve a learner.</summary>
+    /// <remarks>Retrieves a learner's status in one course.</remarks>
+    /// <param name="learnerId">The learner's canonical subject id (sub_… ULID).</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Learner"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Learner> GetAsync(
         string learnerId,
@@ -51,7 +148,7 @@ public sealed class LearnerService
     {
         if (string.IsNullOrEmpty(learnerId))
         {
-            throw new ArgumentException("A Learner id is required.", nameof(learnerId));
+            throw new ArgumentException("A learnerId is required.", nameof(learnerId));
         }
 
         return _requestor.RequestAsync(
@@ -66,12 +163,101 @@ public sealed class LearnerService
             cancellationToken);
     }
 
-    /// <summary>Changes a Learner's name or External ID.</summary>
-    /// <param name="learnerId">The Learner's id (<c>sub_…</c>).</param>
-    /// <param name="options">The fields to change.</param>
-    /// <param name="requestOptions">Per-call settings.</param>
+    /// <summary>List all learners.</summary>
+    /// <remarks>Returns a list of the organization's learners in one course, with each learner's status, dates and current certificate. Filter by <c>status</c>, or find one learner by <c>email</c> or <c>externalId</c>.</remarks>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The updated Learner, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>One page of results, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<Page<Learner>> ListAsync(
+        LearnerListOptions? options = null,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Get, "/learners")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                Query = [new("limit", QueryValue.From(options?.Limit)), new("cursor", options?.Cursor), new("email", options?.Email), new("externalId", options?.ExternalId), new("status", options?.Status?.Value), new("courseId", options?.CourseId)],
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.PageLearner,
+            cancellationToken);
+    }
+
+    /// <summary>Offboard a learner.</summary>
+    /// <remarks>Removes a learner from the organization. A learner who hasn't started has their invite cancelled and the seat returned; a learner who has started keeps their training history and certificates. Releases the learner's <c>externalId</c>.</remarks>
+    /// <param name="learnerId">The learner's canonical subject id (sub_… ULID).</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Learner"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<Learner> OffboardAsync(
+        string learnerId,
+        LearnerOffboardOptions? options = null,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(learnerId))
+        {
+            throw new ArgumentException("A learnerId is required.", nameof(learnerId));
+        }
+
+        return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Post, $"/learners/{Uri.EscapeDataString(learnerId)}:offboard")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IdempotencyKeyRequired = true,
+                Query = [new("courseId", options?.CourseId)],
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.Learner,
+            cancellationToken);
+    }
+
+    /// <summary>Remind a learner.</summary>
+    /// <remarks>Emails the learner a reminder: the invite again if they haven't started, or a nudge to finish if they have.</remarks>
+    /// <param name="learnerId">The learner's canonical subject id (sub_… ULID).</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="LearnerRemindAccepted"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
+    public Task<LearnerRemindAccepted> RemindAsync(
+        string learnerId,
+        LearnerRemindOptions? options = null,
+        RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(learnerId))
+        {
+            throw new ArgumentException("A learnerId is required.", nameof(learnerId));
+        }
+
+        return _requestor.RequestAsync(
+            new ApiRequest(HttpMethod.Post, $"/learners/{Uri.EscapeDataString(learnerId)}:remind")
+            {
+                OrganizationScoped = true,
+                RetrySafe = true,
+                IdempotencyKeyRequired = true,
+                Query = [new("courseId", options?.CourseId)],
+            },
+            requestOptions,
+            TeachMeHipaaJsonContext.Default.LearnerRemindAccepted,
+            cancellationToken);
+    }
+
+    /// <summary>Update a learner.</summary>
+    /// <remarks>Updates a learner's <c>name</c> or <c>externalId</c>; parameters you don't send are left unchanged. Send the body as <c>application/merge-patch+json</c> with the learner's current <c>ETag</c> in <c>If-Match</c>.</remarks>
+    /// <param name="learnerId">The learner's canonical subject id (sub_… ULID).</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The <see cref="Learner"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
     public Task<Learner> UpdateAsync(
         string learnerId,
@@ -81,7 +267,7 @@ public sealed class LearnerService
     {
         if (string.IsNullOrEmpty(learnerId))
         {
-            throw new ArgumentException("A Learner id is required.", nameof(learnerId));
+            throw new ArgumentException("A learnerId is required.", nameof(learnerId));
         }
 
         if (options is null)
@@ -93,6 +279,7 @@ public sealed class LearnerService
             new ApiRequest(new HttpMethod("PATCH"), $"/learners/{Uri.EscapeDataString(learnerId)}")
             {
                 OrganizationScoped = true,
+                Query = [new("courseId", options.CourseId)],
                 Body = RequestBody.MergePatch(options, TeachMeHipaaJsonContext.Default.LearnerUpdateOptions),
             },
             requestOptions,
@@ -100,31 +287,41 @@ public sealed class LearnerService
             cancellationToken);
     }
 
-    /// <summary>Creates a Launch link that signs the Learner straight into their Training.</summary>
-    /// <param name="learnerId">The Learner's id (<c>sub_…</c>).</param>
-    /// <param name="requestOptions">Per-call settings.</param>
+    /// <summary>Create or retrieve a learner by your id.</summary>
+    /// <remarks>Makes sure a learner exists for your own id. Creates and invites the learner the first time, and returns them on every later call, so a sync job can replay it safely. Never uses a second seat.</remarks>
+    /// <param name="externalId">Your id for the learner, URL-encoded.</param>
+    /// <param name="options">The call's parameters.</param>
+    /// <param name="requestOptions">Per-call settings, such as a request id or your own Idempotency-Key.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The single-use link, with <see cref="TeachMeHipaaEntity.LastResponse"/> set.</returns>
+    /// <returns>The <see cref="LearnerWriteResult"/>, with <see cref="TeachMeHipaaEntity.LastResponse"/> set; <c>Created</c> is true when this call created it (201) and false when it already existed (200).</returns>
     /// <exception cref="TeachMeHipaaException">The API refused the request or could not be reached.</exception>
-    public Task<LearnerLaunchLink> CreateLaunchLinkAsync(
-        string learnerId,
+    public Task<LearnerWriteResult> UpsertByExternalIdAsync(
+        string externalId,
+        LearnerUpsertByExternalIdOptions options,
         RequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(learnerId))
+        if (string.IsNullOrEmpty(externalId))
         {
-            throw new ArgumentException("A Learner id is required.", nameof(learnerId));
+            throw new ArgumentException("A externalId is required.", nameof(externalId));
         }
 
-        return _requestor.RequestAsync(
-            new ApiRequest(HttpMethod.Post, $"/learners/{Uri.EscapeDataString(learnerId)}:createLaunchLink")
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        return _requestor.RequestWriteResultAsync(
+            new ApiRequest(HttpMethod.Put, $"/learners/by-external-id/{Uri.EscapeDataString(externalId)}")
             {
                 OrganizationScoped = true,
-                // A duplicate Launch link is harmless, so it needs no Idempotency-Key.
                 RetrySafe = true,
+                IdempotencyKeyRequired = true,
+                Body = RequestBody.Json(options, TeachMeHipaaJsonContext.Default.LearnerUpsertByExternalIdOptions),
             },
             requestOptions,
-            TeachMeHipaaJsonContext.Default.LearnerLaunchLink,
+            TeachMeHipaaJsonContext.Default.LearnerWriteResult,
+            static (result, created) => result with { Created = created },
             cancellationToken);
     }
 }

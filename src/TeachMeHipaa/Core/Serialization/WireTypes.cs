@@ -2,11 +2,12 @@ using System.Text.Json.Serialization;
 
 namespace TeachMeHipaa;
 
-// Shapes the core reads but never hands to callers. Every field is optional
+// Shapes the core reads but never hands to callers, named apart from the
+// generated models of the same schemas. Every field is optional
 // here so a malformed body becomes a TeachMeHipaaException, not a JsonException.
 
 /// <summary><c>dev#/components/schemas/ClientCredentialsTokenResponse</c>.</summary>
-internal sealed class AccessTokenResponse
+internal sealed class TokenEndpointResponse
 {
     [JsonPropertyName("access_token")]
     public string? AccessToken { get; set; }
@@ -16,7 +17,7 @@ internal sealed class AccessTokenResponse
 }
 
 /// <summary><c>dev#/components/schemas/OAuthTokenError</c>.</summary>
-internal sealed class OAuthTokenError
+internal sealed class TokenEndpointError
 {
     [JsonPropertyName("error")]
     public string? Error { get; set; }

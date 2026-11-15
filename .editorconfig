@@ -81,3 +81,8 @@ dotnet_diagnostic.CA1510.severity = none
 dotnet_diagnostic.CA1511.severity = none
 dotnet_diagnostic.CA1512.severity = none
 dotnet_diagnostic.CA1513.severity = none
+
+# Model names are the API's own: `Event` is a Visual Basic keyword, as it is
+# for Stripe .NET's Event.
+[src/TeachMeHipaa/Models/**.cs]
+dotnet_diagnostic.CA1716.severity = none

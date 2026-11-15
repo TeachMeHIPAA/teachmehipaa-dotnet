@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -12,6 +14,12 @@ internal sealed record ApiRequest(HttpMethod Method, string Path)
     public bool OrganizationScoped { get; init; }
 
     /// <summary>
+    /// False for the IR's public operations (<c>security: none</c>), which
+    /// are sent without an Access token, so none is ever minted for them.
+    /// </summary>
+    public bool Authenticated { get; init; } = true;
+
+    /// <summary>
     /// The IR's <c>retrySafe</c>: GETs, operations that take an
     /// Idempotency-Key, and those idempotent by meaning. PATCH and DELETE never are.
     /// </summary>
@@ -23,6 +31,9 @@ internal sealed record ApiRequest(HttpMethod Method, string Path)
     /// </summary>
     public bool IdempotencyKeyRequired { get; init; }
 
+    /// <summary>The media type of a success response; JSON when null.</summary>
+    public string? Accept { get; init; }
+
     /// <summary>Query parameters; null values are left out.</summary>
     public IEnumerable<KeyValuePair<string, string?>>? Query { get; init; }
 
@@ -30,22 +41,108 @@ internal sealed record ApiRequest(HttpMethod Method, string Path)
     public RequestBody? Body { get; init; }
 }
 
-/// <summary>A serialized request body and its media type.</summary>
+/// <summary>A request body, created fresh for the one message that sends it.</summary>
 internal sealed class RequestBody
 {
-    private RequestBody(byte[] content, string contentType)
-    {
-        Content = content;
-        ContentType = contentType;
-    }
+    private readonly Func<HttpContent> _createContent;
 
-    public byte[] Content { get; }
+    private RequestBody(Func<HttpContent> createContent) => _createContent = createContent;
 
-    public string ContentType { get; }
+    public HttpContent CreateContent() => _createContent();
 
     public static RequestBody Json<T>(T value, JsonTypeInfo<T> typeInfo) =>
-        new(JsonSerializer.SerializeToUtf8Bytes(value, typeInfo), "application/json");
+        Serialized(value, typeInfo, "application/json");
 
     public static RequestBody MergePatch<T>(T value, JsonTypeInfo<T> typeInfo) =>
-        new(JsonSerializer.SerializeToUtf8Bytes(value, typeInfo), "application/merge-patch+json");
+        Serialized(value, typeInfo, "application/merge-patch+json");
+
+    /// <summary>A <c>multipart/form-data</c> body; null parts (optional fields left unset) are left out.</summary>
+    public static RequestBody Multipart(params MultipartPart?[] parts) =>
+        new(() =>
+        {
+            var content = new MultipartFormDataContent();
+            foreach (var part in parts)
+            {
+                if (part is null)
+                {
+                    continue;
+                }
+
+                if (part.FileName is null)
+                {
+                    content.Add(part.CreateContent(), part.Name);
+                }
+                else
+                {
+                    content.Add(part.CreateContent(), part.Name, part.FileName);
+                }
+            }
+
+            return content;
+        });
+
+    private static RequestBody Serialized<T>(T value, JsonTypeInfo<T> typeInfo, string mediaType)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, typeInfo);
+        return new(() =>
+        {
+            var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+            return content;
+        });
+    }
+}
+
+/// <summary>
+/// One part of a multipart body: the IR's binary parts are files with their
+/// content type, every other field is a JSON part.
+/// </summary>
+internal sealed class MultipartPart
+{
+    private readonly Func<HttpContent> _createContent;
+
+    private MultipartPart(string name, string? fileName, Func<HttpContent> createContent)
+    {
+        Name = name;
+        FileName = fileName;
+        _createContent = createContent;
+    }
+
+    public string Name { get; }
+
+    public string? FileName { get; }
+
+    public HttpContent CreateContent() => _createContent();
+
+    public static MultipartPart File(string name, Stream data, string contentType) =>
+        new(name, name, () =>
+        {
+            var content = new BorrowedStreamContent(data);
+            content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            return content;
+        });
+
+    public static MultipartPart Json<T>(string name, T value, JsonTypeInfo<T> typeInfo)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, typeInfo);
+        return new(name, null, () =>
+        {
+            var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            return content;
+        });
+    }
+
+    // StreamContent would dispose the caller's stream along with the request.
+    private sealed class BorrowedStreamContent(Stream stream) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream target, TransportContext? context) =>
+            stream.CopyToAsync(target);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+    }
 }

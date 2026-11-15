@@ -5,12 +5,17 @@ namespace TeachMeHipaa;
 /// thread-safe and meant to be shared; its configuration is fixed when it is
 /// constructed, so create another client to change it.
 /// </summary>
-public sealed class TeachMeHipaaClient
+public sealed partial class TeachMeHipaaClient
 {
     /// <summary>Creates a client from your API client's id and secret.</summary>
     /// <param name="options">The client's settings. They are copied, so later changes have no effect.</param>
     /// <exception cref="ArgumentException">A setting is missing or invalid.</exception>
     public TeachMeHipaaClient(TeachMeHipaaClientOptions options)
+        : this(CreateRequestor(options))
+    {
+    }
+
+    private static ApiRequestor CreateRequestor(TeachMeHipaaClientOptions options)
     {
         var config = ClientConfiguration.From(options);
 
@@ -36,15 +41,6 @@ public sealed class TeachMeHipaaClient
                 InnerHandler = new RetryHandler(RetryPolicy.Api, config.MaxRetries, config.TimeProvider) { InnerHandler = transport },
             },
             disposeHandler: false);
-        var requestor = new ApiRequestor(config, api);
-
-        Learners = new LearnerService(requestor);
-        WebhookSubscriptions = new WebhookSubscriptionService(requestor);
+        return new ApiRequestor(config, api);
     }
-
-    /// <summary>Learners: Members taking a Training, seen from the Organization's side.</summary>
-    public LearnerService Learners { get; }
-
-    /// <summary>Webhook subscriptions: where and for which Events the Organization's Deliveries are sent.</summary>
-    public WebhookSubscriptionService WebhookSubscriptions { get; }
 }

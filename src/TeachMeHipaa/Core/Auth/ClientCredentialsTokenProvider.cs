@@ -94,7 +94,7 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         using var response = await _transport.SendAsync(request, cancellationToken).ConfigureAwait(false);
         var text = await ResponseReader.ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
         var token = response.IsSuccessStatusCode
-            ? ResponseReader.Parse(response, text, CoreJsonContext.Default.AccessTokenResponse)
+            ? ResponseReader.Parse(response, text, CoreJsonContext.Default.TokenEndpointResponse)
             : null;
         if (token is not { AccessToken.Length: > 0, ExpiresIn: > 0 })
         {
