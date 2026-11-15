@@ -39,7 +39,7 @@ internal sealed record ClientConfiguration(
                     Checks.RequireText(options.ClientSecret, nameof(options.ClientSecret)),
                     Checks.ResolveScopes(options.Scopes))
                 : null,
-            TokenProvider: options.TokenProvider is null ? null : CheckTokenProvider(options, baseUrl),
+            TokenProvider: options.TokenProvider is null ? null : CheckTokenProvider(options),
             BaseUrl: baseUrl,
             OrganizationId: options.OrganizationId is null
                 ? null
@@ -56,7 +56,7 @@ internal sealed record ClientConfiguration(
     /// <summary>Whether the client can get an Access token, so make authenticated calls.</summary>
     public bool CanAuthenticate => Credentials is not null || TokenProvider is not null;
 
-    private static ITokenProvider CheckTokenProvider(TeachMeHipaaClientOptions options, string baseUrl)
+    private static ITokenProvider CheckTokenProvider(TeachMeHipaaClientOptions options)
     {
         var conflicting = new[]
         {
@@ -70,23 +70,6 @@ internal sealed record ClientConfiguration(
                 $"must not be set with {nameof(options.TokenProvider)}: give a token provider or an API client's "
                     + "credentials, not both (Scopes belong to the token provider)",
                 conflicting.Name);
-        }
-
-        // A Grant's Refresh token works only in its own Environment, and a
-        // provider that refreshed against another one would hand the client
-        // Access tokens its API refuses.
-        if (options.TokenProvider is ITokenEndpointBound bound)
-        {
-            var tokenBaseUrl = bound.BaseUrl is { IsAbsoluteUri: true } absolute
-                ? OptionChecks.NormalizeBaseUrl(absolute)
-                : throw Checks.Invalid("must report an absolute BaseUrl", nameof(options.TokenProvider));
-            if (tokenBaseUrl != baseUrl)
-            {
-                throw Checks.Invalid(
-                    $"gets its tokens from {tokenBaseUrl}, but the client calls {baseUrl}; give both the same "
-                        + "Environment and BaseUrl",
-                    nameof(options.TokenProvider));
-            }
         }
 
         return options.TokenProvider!;

@@ -15,7 +15,6 @@ namespace TeachMeHipaa.ReadmeTests;
 public class ReadmeTests
 {
     private const string Org = $"/v1/organizations/{OrgId}";
-    private const string PartnerId = "ptn_01JD8E2C3D4E5F6G7H8J9K0M1N";
     private const string RequestId = "req_7f3c2a";
 
     /// <summary><c>dev#/components/schemas/ComplianceSummary</c>.</summary>
@@ -52,9 +51,6 @@ public class ReadmeTests
         ["files"] = Files,
         ["delivery-aspnetcore"] = DeliveryAspNetCore,
         ["delivery-test-headers"] = DeliveryTestHeaders,
-        ["partner-consent"] = PartnerConsent,
-        ["partner-grant"] = PartnerGrant,
-        ["partner-organizations"] = PartnerOrganizations,
         ["events-tail"] = EventsTail,
         ["configuration"] = Configuration,
         ["logging"] = Logging,
@@ -328,54 +324,6 @@ public class ReadmeTests
         await ReadmeSamples.RunAsync("delivery-test-headers");
 
         Assert.Equal(["learner.certified"], readme.Printed);
-    }
-
-    private static async Task PartnerConsent(ReadmeHarness readme)
-    {
-        readme.Handler.Script(TokenRoute, GrantTokenReply("access-token-grant", RefreshToken1));
-        var flow = new ConsentFlow(readme.Sessions, readme.Grants);
-
-        var consentUrl = new Uri(flow.Start());
-        var query = System.Web.HttpUtility.ParseQueryString(consentUrl.Query);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => flow.FinishAsync("code-1", "forged-state", CancellationToken.None));
-        await flow.FinishAsync("code-1", query["state"]!, CancellationToken.None);
-
-        Assert.Equal(AppId, query["client_id"]);
-        Assert.Equal("S256", query["code_challenge_method"]);
-        Assert.Equal(RefreshToken1, readme.Grants.RefreshTokens[OrgId]);
-        var exchange = System.Web.HttpUtility.ParseQueryString(Assert.Single(readme.Handler.RequestsTo(TokenRoute)).Body!);
-        Assert.Equal("authorization_code", exchange["grant_type"]);
-        Assert.Equal("code-1", exchange["code"]);
-        Assert.Equal(readme.Sessions.Load().CodeVerifier, exchange["code_verifier"]);
-    }
-
-    private static async Task PartnerGrant(ReadmeHarness readme)
-    {
-        readme.Grants.RefreshTokens[OrgId] = RefreshToken1;
-        readme.Handler
-            .Script(TokenRoute, GrantTokenReply("access-token-grant", RefreshToken2))
-            .Script($"GET {Org}/learners", Page(LearnerJson));
-
-        await ReadmeSamples.RunAsync("partner-grant");
-
-        Assert.Equal(["1"], readme.Printed);
-        Assert.Equal(RefreshToken2, readme.Grants.RefreshTokens[OrgId]);
-        Assert.Contains($"refresh_token={Uri.EscapeDataString(RefreshToken1)}", readme.Handler.RequestsTo(TokenRoute)[0].Body, StringComparison.Ordinal);
-        Assert.Equal("Bearer access-token-grant", readme.Handler.RequestsTo($"GET {Org}/learners")[0].Header("Authorization"));
-    }
-
-    private static async Task PartnerOrganizations(ReadmeHarness readme)
-    {
-        readme.Handler
-            .Script(TokenRoute, TokenReply())
-            .Script($"GET /v1/partners/{PartnerId}/organizations", Page($$"""
-                {"orgId":"{{OrgId}}","name":"Acme Health","createdAt":"2026-11-01T09:00:00.000Z","grantActive":true}
-                """));
-
-        await ReadmeSamples.RunAsync("partner-organizations");
-
-        Assert.Equal([$"{OrgId} True"], readme.Printed);
-        Assert.Empty(readme.Handler.RequestsTo(IntrospectionRoute));
     }
 
     private static async Task EventsTail(ReadmeHarness readme)

@@ -19,16 +19,13 @@ using Microsoft.Build.Utilities;
 /// </summary>
 /// <remarks>
 /// Samples run against the test harness's fake transport, so the extractor
-/// makes three edits, none of which changes line numbers:
+/// makes two edits, neither of which changes line numbers:
 /// <list type="bullet">
 /// <item>Variables a sample presumes, such as <c>client</c> or <c>app</c>,
 /// are declared from <c>ReadmeHarness.Current</c> above its statements.</item>
-/// <item>Each <c>new TeachMeHipaaClientOptions</c> or
-/// <c>new PartnerGrantTokenProviderOptions</c> initializer also sets
+/// <item>Each <c>new TeachMeHipaaClientOptions</c> initializer also sets
 /// <c>HttpMessageHandler</c> to the fake, except in samples that use
 /// <c>AddTeachMeHipaa</c>, whose harness configures the factory client.</item>
-/// <item><c>TeachMeHipaaOAuth.ExchangeCodeAsync</c> calls go through the
-/// harness, which passes the fake's HttpClient.</item>
 /// </list>
 /// </remarks>
 public sealed class ExtractReadmeSamples : Task
@@ -38,7 +35,7 @@ public sealed class ExtractReadmeSamples : Task
     private static readonly Regex Tag = new Regex(@"^<!-- sample: ([a-z0-9-]+) -->$");
     private static readonly Regex UsingDirective = new Regex(@"^using [A-Za-z0-9_.]+;$");
     private static readonly Regex TypeDeclaration = new Regex(@"^(public |internal )?((sealed|static|abstract|partial) )*(class|record|struct|interface) ");
-    private static readonly Regex OptionsInitializer = new Regex(@"new (TeachMeHipaaClientOptions|PartnerGrantTokenProviderOptions)$");
+    private static readonly Regex OptionsInitializer = new Regex(@"new TeachMeHipaaClientOptions$");
 
     // Variables samples may use without declaring, and the harness property each comes from.
     private static readonly KeyValuePair<string, string>[] Presumed =
@@ -46,7 +43,6 @@ public sealed class ExtractReadmeSamples : Task
         new KeyValuePair<string, string>("client", "Client"),
         new KeyValuePair<string, string>("builder", "Builder"),
         new KeyValuePair<string, string>("app", "App"),
-        new KeyValuePair<string, string>("grants", "Grants"),
     };
 
     [Required]
@@ -169,14 +165,9 @@ public sealed class ExtractReadmeSamples : Task
         var injectTransport = !sample.Code.Any(line => line.Contains("AddTeachMeHipaa"));
         return sample.Code
             .Select((line, index) =>
-            {
-                if (injectTransport && line.Trim() == "{" && index > 0 && OptionsInitializer.IsMatch(sample.Code[index - 1].TrimEnd()))
-                {
-                    line = line.Replace("{", "{ HttpMessageHandler = " + Harness + ".Current.Handler,");
-                }
-
-                return line.Replace("TeachMeHipaaOAuth.ExchangeCodeAsync(", Harness + ".ExchangeCodeAsync(");
-            })
+                injectTransport && line.Trim() == "{" && index > 0 && OptionsInitializer.IsMatch(sample.Code[index - 1].TrimEnd())
+                    ? line.Replace("{", "{ HttpMessageHandler = " + Harness + ".Current.Handler,")
+                    : line)
             .ToArray();
     }
 

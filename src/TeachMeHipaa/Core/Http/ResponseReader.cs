@@ -110,8 +110,7 @@ internal static class ResponseReader
     /// <param name="response">The token endpoint's response.</param>
     /// <param name="text">Its body.</param>
     /// <param name="now">For a 429's <c>Retry-After</c>.</param>
-    /// <param name="invalidGrantGuidance">Appended to an <c>invalid_grant</c> message: what only the caller can do about it.</param>
-    public static TeachMeHipaaException OAuthError(HttpResponseMessage response, string text, DateTimeOffset now, string? invalidGrantGuidance = null)
+    public static TeachMeHipaaException OAuthError(HttpResponseMessage response, string text, DateTimeOffset now)
     {
         var oauth = Parse(response, text, CoreJsonContext.Default.TokenEndpointError);
         if (oauth?.Error is null)
@@ -120,11 +119,6 @@ internal static class ResponseReader
         }
 
         var summary = string.Join(": ", new[] { oauth.Error, oauth.ErrorDescription }.Where(part => part is not null));
-        if (oauth.Error == "invalid_grant" && invalidGrantGuidance is not null)
-        {
-            summary = WithGuidance(summary, invalidGrantGuidance);
-        }
-
         return new OAuthException(summary).Describe(
             TeachMeHipaaResponse.From(response),
             text,
@@ -133,9 +127,6 @@ internal static class ResponseReader
             oauth.ErrorDescription,
             []);
     }
-
-    /// <summary>Ends <paramref name="message"/> with <paramref name="guidance"/> as a new sentence.</summary>
-    public static string WithGuidance(string message, string guidance) => $"{message.TrimEnd('.')}. {guidance}";
 
     /// <summary>The problem <c>code</c>, for a response that carries one.</summary>
     public static async Task<string?> ReadProblemCodeAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>

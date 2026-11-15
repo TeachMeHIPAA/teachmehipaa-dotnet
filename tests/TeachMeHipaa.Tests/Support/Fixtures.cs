@@ -9,16 +9,6 @@ public static class Fixtures
     public const string OrgId = "org_acme";
     public const string LearnerId = "sub_01JD80AB2C3D4E5F6G7H8J9K0M";
 
-    public const string AppId = "app_01JD7Z3M1V4Q8T2K5N9R6W0XYZ";
-    public const string AppSecret = "tmh_as_cGFydG5lci1zZWNyZXQ";
-
-    /// <summary>base64 of <c>AppId:AppSecret</c>, computed outside the SDK.</summary>
-    public const string AppBasicCredentials = "YXBwXzAxSkQ3WjNNMVY0UThUMks1TjlSNlcwWFlaOnRtaF9hc19jR0Z5ZEc1bGNpMXpaV055WlhR";
-
-    public const string RefreshToken1 = "tmh_rt_grt_01JD81QW3E4R5T6Y7U8I9O0PAS.first";
-    public const string RefreshToken2 = "tmh_rt_grt_01JD81QW3E4R5T6Y7U8I9O0PAS.second";
-    public const string RefreshToken3 = "tmh_rt_grt_01JD81QW3E4R5T6Y7U8I9O0PAS.third";
-
     public const string TokenRoute = "POST /v1/auth/token";
     public const string IntrospectionRoute = "GET /v1/auth/introspection";
     public const string LearnerRoute = $"GET /v1/organizations/{OrgId}/learners/{LearnerId}";
@@ -30,24 +20,6 @@ public static class Fixtures
             {"access_token":"{{accessToken}}","token_type":"Bearer","expires_in":{{expiresIn}},"scope":"learners:read learners:write"}
             """,
         Headers = new Dictionary<string, string> { ["Cache-Control"] = "no-store", ["Pragma"] = "no-cache" },
-    };
-
-    /// <summary><c>dev#/components/schemas/AuthorizationCodeTokenResponse</c>, as in api-sdk-surface.md §2.2.</summary>
-    public static ScriptedReply GrantTokenReply(string accessToken, string refreshToken, int expiresIn = 900) => new()
-    {
-        Json = $$"""
-            {"access_token":"{{accessToken}}","token_type":"Bearer","expires_in":{{expiresIn}},"refresh_token":"{{refreshToken}}","scope":"learners:read learners:write"}
-            """,
-        Headers = new Dictionary<string, string> { ["Cache-Control"] = "no-store", ["Pragma"] = "no-cache" },
-    };
-
-    /// <summary><c>dev#/components/schemas/OAuthTokenError</c>.</summary>
-    public static ScriptedReply OAuthErrorReply(string error, string description, int status = 400) => new()
-    {
-        Status = (System.Net.HttpStatusCode)status,
-        Json = $$"""
-            {"error":"{{error}}","error_description":"{{description}}"}
-            """,
     };
 
     /// <summary><c>dev#/components/schemas/TokenIntrospection</c> for an API client.</summary>

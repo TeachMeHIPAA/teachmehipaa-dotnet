@@ -97,15 +97,14 @@ into the namespace. A sample that stops compiling fails the build with an
 error at its README line.
 
 To run against the fake transport, the extractor declares the variables a
-sample uses without creating (`client`, `builder`, `app`, `grants`) from
-`ReadmeHarness`, adds the fake as `HttpMessageHandler` to each
-`TeachMeHipaaClientOptions` and `PartnerGrantTokenProviderOptions`
-initializer (except in samples using `AddTeachMeHipaa`, whose test
-configures the factory client), and routes `TeachMeHipaaOAuth.ExchangeCodeAsync`
-through the harness. `ReadmeTests.cs` scripts the fake, runs each sample and
-checks what it printed and sent; the ASP.NET Core samples run in a
-`TestServer`. To add a sample, tag it and add a check to `Checks`; the suite
-fails if a sample has none.
+sample uses without creating (`client`, `builder`, `app`) from
+`ReadmeHarness`, and adds the fake as `HttpMessageHandler` to each
+`TeachMeHipaaClientOptions` initializer (except in samples using
+`AddTeachMeHipaa`, whose test configures the factory client).
+`ReadmeTests.cs` scripts the fake, runs each sample and checks what it
+printed and sent; the ASP.NET Core samples run in a `TestServer`. To add a
+sample, tag it and add a check to `Checks`; the suite fails if a sample has
+none.
 
 ### Contract suite
 

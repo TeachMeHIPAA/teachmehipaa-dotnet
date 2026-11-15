@@ -6,17 +6,14 @@ namespace TeachMeHipaa;
 /// </summary>
 internal sealed class OptionChecks(string owner)
 {
-    internal const string LiveBaseUrl = "https://api.tme.so/v1";
-    internal const string SandboxBaseUrl = "https://api-teachmehipaa-dev.web.app/v1";
+    private const string LiveBaseUrl = "https://api.tme.so/v1";
+    private const string SandboxBaseUrl = "https://api-teachmehipaa-dev.web.app/v1";
 
     public ArgumentException Invalid(string problem, string option) =>
         new($"{owner}.{option} {problem}.", option);
 
     public string RequireText(string? value, string option) =>
         string.IsNullOrWhiteSpace(value) ? throw Invalid("must be a non-empty string", option) : value!;
-
-    public Uri RequireAbsoluteUri(Uri? value, string option) =>
-        value is { IsAbsoluteUri: true } ? value : throw Invalid("must be an absolute URL", option);
 
     public TimeSpan RequirePositive(TimeSpan value, string option) =>
         value > TimeSpan.Zero ? value : throw Invalid("must be positive", option);
@@ -27,7 +24,7 @@ internal sealed class OptionChecks(string owner)
         if (baseUrl is not null)
         {
             return baseUrl.IsAbsoluteUri && (baseUrl.Scheme == Uri.UriSchemeHttps || baseUrl.Scheme == Uri.UriSchemeHttp)
-                ? NormalizeBaseUrl(baseUrl)
+                ? baseUrl.AbsoluteUri.TrimEnd('/')
                 : throw Invalid("must be an absolute http or https URL", "BaseUrl");
         }
 
@@ -38,9 +35,6 @@ internal sealed class OptionChecks(string owner)
             _ => throw Invalid("must be Live or Sandbox", "Environment"),
         };
     }
-
-    /// <summary>The form base URLs are kept and compared in: absolute, without a trailing slash.</summary>
-    public static string NormalizeBaseUrl(Uri baseUrl) => baseUrl.AbsoluteUri.TrimEnd('/');
 
     public string[] ResolveScopes(IReadOnlyList<string>? scopes)
     {

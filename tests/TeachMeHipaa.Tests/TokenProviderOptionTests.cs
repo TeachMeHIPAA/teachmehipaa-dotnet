@@ -5,25 +5,7 @@ namespace TeachMeHipaa.Tests;
 
 public class TokenProviderOptionTests
 {
-    private const string PartnerId = "ptn_01JD82ZX4C5V6B7N8M9Q0W1E2R";
     private const string Unauthorized = """{"title":"Unauthorized","status":401,"code":"unauthorized"}""";
-
-    private sealed class EmptyTokenStore : ITokenStore
-    {
-        public ValueTask<string> LoadAsync(CancellationToken cancellationToken) => new(string.Empty);
-
-        public ValueTask SaveAsync(string refreshToken, CancellationToken cancellationToken) => default;
-    }
-
-    private static PartnerGrantTokenProvider PartnerGrant(TeachMeHipaaEnvironment environment = TeachMeHipaaEnvironment.Live, Uri? baseUrl = null) =>
-        new(new PartnerGrantTokenProviderOptions
-        {
-            ClientId = AppId,
-            ClientSecret = AppSecret,
-            TokenStore = new EmptyTokenStore(),
-            Environment = environment,
-            BaseUrl = baseUrl,
-        });
 
     [Fact]
     public async Task AStaticTokenIsSentAsIsAndTheTokenEndpointIsNeverCalled()
@@ -68,26 +50,6 @@ public class TokenProviderOptionTests
         Assert.Throws<ArgumentException>(() => new StaticTokenProvider(" "));
     }
 
-    [Fact]
-    public async Task APartnerLevelTokenCallsPartnersWithoutLookingUpAnOrganization()
-    {
-        var handler = new FakeHttpMessageHandler().Script(
-            $"GET /v1/partners/{PartnerId}",
-            new ScriptedReply
-            {
-                Json = $$"""{"partnerId":"{{PartnerId}}","name":"Acme Resellers","appId":"{{AppId}}","status":"active","maxChildOrgs":50,"childOrgCount":3,"createdAt":"2026-11-01T09:00:00.000Z"}""",
-            });
-        var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-        {
-            TokenProvider = new StaticTokenProvider("partner-level-token"),
-            HttpMessageHandler = handler,
-        });
-
-        await client.Partners.GetAsync(PartnerId);
-
-        Assert.Equal([$"GET /v1/partners/{PartnerId}"], handler.Requests.Select(request => request.Route));
-    }
-
     [Theory]
     [InlineData(nameof(TeachMeHipaaClientOptions.ClientId))]
     [InlineData(nameof(TeachMeHipaaClientOptions.ClientSecret))]
@@ -114,65 +76,5 @@ public class TokenProviderOptionTests
         var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions { ClientId = ClientId }));
 
         Assert.Equal(nameof(TeachMeHipaaClientOptions.ClientSecret), error.ParamName);
-    }
-
-    [Fact]
-    public void APartnerGrantFromAnotherEnvironmentIsRefused()
-    {
-        var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-        {
-            TokenProvider = PartnerGrant(TeachMeHipaaEnvironment.Sandbox),
-        }));
-
-        Assert.Equal(nameof(TeachMeHipaaClientOptions.TokenProvider), error.ParamName);
-        Assert.Contains("https://api-teachmehipaa-dev.web.app/v1", error.Message, StringComparison.Ordinal);
-        Assert.Contains("https://api.tme.so/v1", error.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void APartnerGrantOnTheSameBaseUrlIsAcceptedWhateverTheTrailingSlash()
-    {
-        var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-        {
-            TokenProvider = PartnerGrant(baseUrl: new Uri("http://localhost:4010/v1/")),
-            BaseUrl = new Uri("http://localhost:4010/v1"),
-        });
-
-        Assert.NotNull(client);
-    }
-
-    [Fact]
-    public void ACustomProviderBoundToAnotherBaseUrlIsRefused()
-    {
-        var error = Assert.Throws<ArgumentException>(() => new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-        {
-            TokenProvider = new BoundTokenProvider(new Uri("https://api-teachmehipaa-dev.web.app/v1")),
-        }));
-
-        Assert.Equal(nameof(TeachMeHipaaClientOptions.TokenProvider), error.ParamName);
-        Assert.Contains("https://api-teachmehipaa-dev.web.app/v1", error.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ACustomProviderBoundToTheClientsBaseUrlIsAccepted()
-    {
-        var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-        {
-            TokenProvider = new BoundTokenProvider(new Uri("https://api.tme.so/v1/")),
-        });
-
-        Assert.NotNull(client);
-    }
-
-    /// <summary>A caller's own provider that opts into the Environment check.</summary>
-    private sealed class BoundTokenProvider(Uri baseUrl) : ITokenProvider, ITokenEndpointBound
-    {
-        public Uri BaseUrl { get; } = baseUrl;
-
-        public Task<string> GetAccessTokenAsync(CancellationToken cancellationToken) => Task.FromResult("my-own-token");
-
-        public void Invalidate(string accessToken)
-        {
-        }
     }
 }

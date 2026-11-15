@@ -22,7 +22,6 @@ Security fixes are released for the latest major version.
 - It never logs request or response bodies, headers or credentials; its
   opt-in debug logging records only the method, path, status, latency and
   request id (ADR-0007).
-- `WebhookSignatureException` never carries the Delivery's body or headers,
-  and `TokenStoreException` never carries the Refresh token.
-- It is server-side only: never ship a client secret or a Partner app secret
-  to a browser, a desktop app or a mobile app.
+- `WebhookSignatureException` never carries the Delivery's body or headers.
+- It is server-side only: never ship a client secret to a browser, a desktop
+  app or a mobile app.

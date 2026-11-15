@@ -16,10 +16,8 @@ public sealed class TeachMeHipaaClientOptions
 
     /// <summary>
     /// Supplies every Access token instead of <see cref="ClientId"/> and
-    /// <see cref="ClientSecret"/>, such as a <see cref="PartnerGrantTokenProvider"/>
-    /// for one Organization's Grant or a <see cref="StaticTokenProvider"/>.
-    /// Give this or the credentials and <see cref="Scopes"/>, not both. A
-    /// <see cref="PartnerGrantTokenProvider"/> must use the client's base URL.
+    /// <see cref="ClientSecret"/>, such as a <see cref="StaticTokenProvider"/>.
+    /// Give this or the credentials and <see cref="Scopes"/>, not both.
     /// </summary>
     public ITokenProvider? TokenProvider { get; init; }
 

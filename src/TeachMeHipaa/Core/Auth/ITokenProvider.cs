@@ -3,8 +3,7 @@ namespace TeachMeHipaa;
 /// <summary>
 /// Supplies the Access token for each request. A client mints its own with
 /// client credentials unless <see cref="TeachMeHipaaClientOptions.TokenProvider"/>
-/// gives it one of these, such as a <see cref="PartnerGrantTokenProvider"/>
-/// or a <see cref="StaticTokenProvider"/>.
+/// gives it one of these, such as a <see cref="StaticTokenProvider"/>.
 /// </summary>
 public interface ITokenProvider
 {

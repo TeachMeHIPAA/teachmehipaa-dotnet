@@ -25,7 +25,6 @@ calls methods. Every method is `async` and takes a `CancellationToken`.
 - [Operations](#operations)
 - [Uploads and downloads](#uploads-and-downloads)
 - [Webhooks](#webhooks)
-- [Partner apps](#partner-apps)
 - [Tailing the Event log](#tailing-the-event-log)
 - [Configuration](#configuration)
 - [Logging](#logging)
@@ -155,9 +154,7 @@ Console.WriteLine($"{compliance.CompliantRate} {compliance.LastResponse!.Request
 ```
 
 A client's configuration is fixed when you create it. To act for another
-Organization, create another client. Partner-level calls
-(`client.Partners`) are not Organization-scoped and take the `partnerId` as
-their first argument.
+Organization, create another client.
 
 ## Public lookups without credentials
 
@@ -302,16 +299,17 @@ The client retries network errors, 409 `conflict`, 429 and 5xx up to
 `MaxRetries` times (2 by default), backing off from 0.5 s up to 5 s with
 jitter and honoring `Retry-After` up to 60 s. It only retries calls that are
 safe to replay: reads, writes that carry an `Idempotency-Key`, and the few
-writes that are idempotent by nature, such as `SeatOrders.QuoteAsync`. PATCH
-and DELETE are never retried, and take no key: the API ignores one on them.
+writes that are idempotent by nature, such as `Learners.CreateLaunchLinkAsync`.
+PATCH and DELETE are never retried, and take no key: the API ignores one on
+them.
 
 Every create and custom method gets a generated UUID `Idempotency-Key`,
-reused by each of its retries, so a retry never enrolls a Learner twice or
-charges twice. Pass your own in `RequestOptions` to make a call safe to
-repeat across processes. `MaxRetries` and `Timeout` override the client's
-settings for one call, and `RequestId` sends your own `x-request-id` on every
-attempt, so the call can be found in your logs and TeachMeHIPAA's. The API
-echoes an id that matches `^[A-Za-z0-9._-]{1,128}$` and replaces any other:
+reused by each of its retries, so a retry never enrolls a Learner twice.
+Pass your own in `RequestOptions` to make a call safe to repeat across
+processes. `MaxRetries` and `Timeout` override the client's settings for one
+call, and `RequestId` sends your own `x-request-id` on every attempt, so the
+call can be found in your logs and TeachMeHIPAA's. The API echoes an id that
+matches `^[A-Za-z0-9._-]{1,128}$` and replaces any other:
 
 <!-- sample: request-options -->
 ```csharp
@@ -517,140 +515,6 @@ if (delivery.Event is EventLearnerCertified certified)
 }
 ```
 
-## Partner apps
-
-A Partner app acts for many Organizations, each connected through a Grant
-that an admin approves on the TeachMeHIPAA consent screen.
-`TeachMeHipaaOAuth` builds the consent URL with a PKCE challenge and
-exchanges the returned code. Keep the `state` and code verifier in the
-admin's server-side session between the two steps. `ConsentSessions` and
-`GrantDatabase` below stand in for your own storage.
-
-<!-- sample: partner-consent -->
-```csharp
-using TeachMeHipaa;
-
-public sealed class ConsentFlow(ConsentSessions sessions, GrantDatabase grants)
-{
-    private static readonly Uri RedirectUri = new("https://partner.example.com/tmh/callback");
-
-    /// <summary>Returns the URL to send the Organization's admin to.</summary>
-    public string Start()
-    {
-        var pkce = TeachMeHipaaOAuth.CreatePkcePair();
-        var state = TeachMeHipaaOAuth.CreateState();
-        sessions.Save(state, pkce.CodeVerifier);
-        return TeachMeHipaaOAuth.AuthorizeUrl(new AuthorizeUrlOptions
-        {
-            ClientId = Environment.GetEnvironmentVariable("TMH_APP_ID")!,
-            RedirectUri = RedirectUri,
-            Scopes = ["learners:read", "learners:write"],
-            State = state,
-            CodeChallenge = pkce.CodeChallenge,
-        });
-    }
-
-    /// <summary>Handles the redirect back to <see cref="RedirectUri"/>.</summary>
-    public async Task FinishAsync(string code, string state, CancellationToken cancellationToken)
-    {
-        var saved = sessions.Load();
-        if (state != saved.State)
-        {
-            throw new UnauthorizedAccessException("state mismatch: possible CSRF");
-        }
-
-        var grant = await TeachMeHipaaOAuth.ExchangeCodeAsync(
-            new ExchangeCodeOptions
-            {
-                ClientId = Environment.GetEnvironmentVariable("TMH_APP_ID")!,
-                ClientSecret = Environment.GetEnvironmentVariable("TMH_APP_SECRET")!,
-                Code = code,
-                RedirectUri = RedirectUri,
-                CodeVerifier = saved.CodeVerifier,
-            },
-            cancellationToken: cancellationToken);
-        await grants.SaveAsync("org_acme", grant.RefreshToken, cancellationToken);
-    }
-}
-```
-
-A code works once, within 10 minutes, so the exchange is never retried.
-
-Then create a client per authorized Organization with a
-`PartnerGrantTokenProvider` and an `ITokenStore`. Every token exchange
-rotates the Grant's Refresh token, and the provider saves each new one to the
-store before it uses the Access token that came with it.
-
-<!-- sample: partner-grant -->
-```csharp
-using TeachMeHipaa;
-
-var client = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-{
-    TokenProvider = new PartnerGrantTokenProvider(new PartnerGrantTokenProviderOptions
-    {
-        ClientId = Environment.GetEnvironmentVariable("TMH_APP_ID")!,
-        ClientSecret = Environment.GetEnvironmentVariable("TMH_APP_SECRET")!,
-        TokenStore = new GrantStore(grants, "org_acme"),
-    }),
-    OrganizationId = "org_acme",
-});
-
-var learners = await client.Learners.ListAsync();
-Console.WriteLine(learners.Items.Count);
-
-/// <summary>The Refresh token of one Organization's Grant.</summary>
-public sealed class GrantStore(GrantDatabase grants, string orgId) : ITokenStore
-{
-    public ValueTask<string> LoadAsync(CancellationToken cancellationToken) =>
-        new(grants.LoadAsync(orgId, cancellationToken));
-
-    public ValueTask SaveAsync(string refreshToken, CancellationToken cancellationToken) =>
-        new(grants.SaveAsync(orgId, refreshToken, cancellationToken));
-}
-```
-
-> [!WARNING]
-> Presenting a superseded Refresh token revokes the whole Grant (ADR-0004).
-> So `SaveAsync` must persist durably before it completes, you should create
-> one provider per Grant and share it between clients, and a Refresh token
-> exchange is **never retried**: a network error during one throws
-> `ApiConnectionException`, and an `OAuthException` with code
-> `invalid_grant` means the Organization must go through consent again.
-> Never retry these yourself with an old Refresh token. If `SaveAsync`
-> throws, the client throws `TokenStoreException` and doesn't use the new
-> token.
-
-Give the provider the same `Environment` (and `BaseUrl`) as the client: a
-client refuses, with `ArgumentException`, a provider that would exchange
-Refresh tokens against another Environment.
-
-For the Partner's own calls, such as listing and creating customer
-Organizations, authenticate with the Partner app's own id (`app_…`) and
-secret (`tmh_as_…`) as `ClientId` and `ClientSecret`, and pass your
-`partnerId`:
-
-<!-- sample: partner-organizations -->
-```csharp
-using TeachMeHipaa;
-
-var partner = new TeachMeHipaaClient(new TeachMeHipaaClientOptions
-{
-    ClientId = Environment.GetEnvironmentVariable("TMH_APP_ID")!,
-    ClientSecret = Environment.GetEnvironmentVariable("TMH_APP_SECRET")!,
-});
-
-await foreach (var organization in partner.Partners.Organizations.ListAutoPagingAsync("ptn_01JD8E2C3D4E5F6G7H8J9K0M1N"))
-{
-    Console.WriteLine($"{organization.OrgId} {organization.GrantActive}");
-}
-```
-
-If you get Access tokens some other way, set
-`TokenProvider = new StaticTokenProvider(accessToken)`, or implement
-`ITokenProvider`. A static token is never renewed; once it expires, calls
-throw `AuthenticationException`.
-
 ## Tailing the Event log
 
 `Events.TailAsync` reads the Event log oldest first and keeps its own
@@ -709,10 +573,10 @@ Options are `init`-only, and the client copies them when it is created:
 
 | Option               | Default                                     | Description                                                                              |
 | -------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `ClientId`           | None: public methods only                   | Your API client's id (`cli_…`), or a Partner app's (`app_…`)                             |
-| `ClientSecret`       | Required with `ClientId`                    | The matching secret (`tmh_cs_…` or `tmh_as_…`)                                           |
+| `ClientId`           | None: public methods only                   | Your API client's id (`cli_…`)                                                           |
+| `ClientSecret`       | Required with `ClientId`                    | The matching secret (`tmh_cs_…`)                                                         |
 | `Scopes`             | Every Scope the API client holds            | Narrows the Access token's Scopes                                                        |
-| `TokenProvider`      | Client credentials                          | Supplies Access tokens instead: `PartnerGrantTokenProvider`, `StaticTokenProvider`       |
+| `TokenProvider`      | Client credentials                          | Supplies Access tokens instead, e.g. `StaticTokenProvider`                               |
 | `Environment`        | `TeachMeHipaaEnvironment.Live`              | `Live` or `Sandbox`; credentials work only in their own Environment                      |
 | `BaseUrl`            | The Environment's URL                       | Overrides it, e.g. `http://localhost:4010/v1` for a mock server                          |
 | `OrganizationId`     | Looked up once with `Auth.IntrospectAsync`  | The Organization to act for                                                              |
@@ -729,6 +593,11 @@ Give either `ClientId` and `ClientSecret`, or `TokenProvider`, not both;
 only public calls. Base URLs: Live is `https://api.tme.so/v1`; Sandbox is
 `https://api-teachmehipaa-dev.web.app/v1`. An invalid option throws
 `ArgumentException` naming it when you create the client.
+
+If you get Access tokens some other way, set
+`TokenProvider = new StaticTokenProvider(accessToken)`, or implement
+`ITokenProvider`. A static token is never renewed; once it expires, calls
+throw `AuthenticationException`.
 
 ## Logging
 

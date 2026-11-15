@@ -37,10 +37,10 @@ Generated from the Developer API document release `waggish-wombat`.
   `AuthenticationException`, `PermissionDeniedException`,
   `NotFoundException`, `ConflictException`, `PreconditionFailedException`,
   `IdempotencyException`, `RateLimitException`, `ApiException`,
-  `ApiConnectionException`, `ApiTimeoutException`, `OAuthException`,
-  `TokenStoreException`) carrying the problem `Code`, `Detail`, field
-  `Errors`, `Headers` and `RequestId`, with a guard that throws
-  `ApiException` for non-JSON responses instead of a parse error.
+  `ApiConnectionException`, `ApiTimeoutException`, `OAuthException`)
+  carrying the problem `Code`, `Detail`, field `Errors`, `Headers` and
+  `RequestId`, with a guard that throws `ApiException` for non-JSON
+  responses instead of a parse error.
 - Retries with exponential backoff and jitter for network errors, 409
   `conflict`, 429 and 5xx, honoring `Retry-After`, only for calls that are
   safe to replay; a generated `Idempotency-Key` per create and custom method,
@@ -65,11 +65,6 @@ Generated from the Developer API document release `waggish-wombat`.
   body hash, path and timestamp and returns a typed Event, `UnknownEvent` or
   `TestDelivery`; and `WebhookUtility.GenerateTestHeaders` for testing
   handlers.
-- Partner apps: `TeachMeHipaaOAuth` (PKCE pair, state, consent URL, code
-  exchange) and `PartnerGrantTokenProvider`, which saves every rotated
-  Refresh token to your `ITokenStore` before use and never retries a Refresh
-  token exchange. A client refuses a provider bound to another Environment
-  or base URL.
 - `Events.TailAsync` to read the Event log from a saved position, once or
   following new Events.
 - Opt-in debug logging through an `ILogger`, one entry per response with
