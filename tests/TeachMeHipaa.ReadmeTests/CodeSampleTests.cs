@@ -32,7 +32,7 @@ public sealed class CodeSampleTests
 
     private static readonly string Root = FindRoot();
 
-    private static readonly JsonElement Document = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "docs", "reference", "code-samples.json"))).RootElement;
+    private static readonly JsonElement Document = JsonElement.Parse(File.ReadAllText(Path.Combine(Root, "docs", "reference", "code-samples.json")));
 
     private static readonly Lazy<MetadataReference[]> References = new(() =>
     [
