@@ -1,23 +1,40 @@
-# TeachMeHIPAA .NET library
+---
+title: TeachMeHIPAA client library for .NET
+---
 
-The API reference for `TeachMeHipaa`, the .NET library for the TeachMeHIPAA
-Developer API, built from the XML documentation of every public type and
-member.
+# TeachMeHIPAA client library for .NET
+
+`TeachMeHipaa` calls the TeachMeHIPAA Developer API from .NET: enroll your
+people in HIPAA training, track their compliance and react to
+certifications from your own systems. It targets `net8.0` and
+`netstandard2.0`, and every method is asynchronous and takes a
+`CancellationToken`.
 
 > [!IMPORTANT]
-> **Status: pre-release.** The Developer API isn't generally available yet,
-> and the package isn't on NuGet. Names and behavior can still change
-> before 1.0.0.
+> The Developer API is in preview, and the package isn't on NuGet yet.
+> Build it from source as the [quickstart](../articles/quickstart.md) shows.
+> Type and member names can change before 1.0.0.
 
-Start with <xref:TeachMeHipaa.TeachMeHipaaClient> and
-<xref:TeachMeHipaa.TeachMeHipaaClientOptions>. The client's services, such
-as <xref:TeachMeHipaa.LearnerService>, hang off it; webhook verification is
-<xref:TeachMeHipaa.WebhookUtility>.
+## Get started
 
-The guides, the generated resource reference and runnable examples live in
-the repository:
+- [Quickstart: Call the API from a console app](../articles/quickstart.md)
+- [Authenticate the client](../articles/authenticate.md)
+- [Use dependency injection](../articles/dependency-injection.md)
 
-- [README and installation](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet#readme)
-- [Guides](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/tree/main/docs/guides)
-- [Resource reference](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/blob/main/docs/reference/resources.md)
-- [Examples](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/tree/main/examples)
+## Common tasks
+
+- [Handle errors and retries](../articles/handle-errors.md)
+- [Iterate over paged results](../articles/paginate.md)
+- [Receive webhooks in ASP.NET Core](../articles/receive-webhooks.md)
+- [Wait for long-running operations](../articles/long-running-operations.md)
+- [Import and export files](../articles/files.md)
+
+## Reference
+
+- [Resource reference](../reference/resources.md): every service and method
+  with its HTTP call, Scopes and retry behavior.
+- [API reference](xref:TeachMeHipaa): every public type and member.
+  Start with <xref:TeachMeHipaa.TeachMeHipaaClient> and
+  <xref:TeachMeHipaa.TeachMeHipaaClientOptions>; webhook verification is
+  <xref:TeachMeHipaa.WebhookUtility>.
+- [Source code and examples](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet)

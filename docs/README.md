@@ -1,43 +1,57 @@
-# Documentation
+# TeachMeHIPAA .NET documentation
 
-Documentation for `TeachMeHipaa`, the .NET library for the TeachMeHIPAA
-Developer API. Start with the [README](../README.md) for installation and a
-quickstart.
+Guides and reference for `TeachMeHipaa`, the .NET client library for the
+TeachMeHIPAA Developer API. Installation and a first sample are in the
+[README](../README.md). The same guides are published with the API
+reference at <https://teachmehipaa.github.io/teachmehipaa-dotnet/>.
 
-## Guides
+CI compiles every C# sample in these guides and runs it against a fake of
+the API, so the code works as written.
 
-Every C# sample in these guides is compiled and run against a fake of the
-API in CI, so the samples work as written.
+## Get started
 
-| Guide                                                    | Covers                                                                                |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [Getting started](guides/getting-started.md)             | Install, Sandbox credentials, a first call, enrolling a Learner, dependency injection |
-| [Authentication](guides/authentication.md)               | Client credentials, Scopes, Environments, the Organization binding, static tokens     |
-| [Errors and retries](guides/errors-and-retries.md)       | Exception classes, `Code`, request ids, retries, idempotency keys                     |
-| [Pagination and Events](guides/pagination-and-events.md) | Pages, `await foreach`, the Event log, `Events.TailAsync`                             |
-| [Webhooks](guides/webhooks.md)                           | Webhook subscriptions, verifying Deliveries, Test deliveries, test headers            |
-| [Operations and files](guides/operations-and-files.md)   | `WaitAsync`, CSV exports and imports, Certificate PDFs                                |
-| [Conditional requests](guides/conditional-requests.md)   | ETags, `If-Match`, `GetIfModifiedAsync`, merge-patch updates                          |
-| [Testing](guides/testing.md)                             | The Sandbox, a fake `HttpMessageHandler`, signing test Deliveries                     |
-| [Configuration](guides/configuration.md)                 | Every client option and its default, timeouts, your own handler, logging              |
-| [Versioning](guides/versioning.md)                       | Semantic versioning, `OPENAPI_VERSION`, additive API changes, target frameworks       |
+| Article                                                     | You learn to                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------- |
+| [Quickstart: Call the API from a console app](articles/quickstart.md) | Reference the library, read compliance and enroll a Learner |
 
-## API reference
+## How-to guides
 
-- [Resource reference](reference/resources.md): every service and method,
-  with its C# signature, HTTP call, required Scopes, retry, idempotency and
-  conditional behavior, options and return type. Generated from the SDK IR
-  by `tools/Generator`.
+| Article                                                                    | You learn to                                                                  |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [Authenticate the client](articles/authenticate.md)                        | Use client credentials, narrow Scopes, pick an Environment, bring your own tokens |
+| [Use dependency injection](articles/dependency-injection.md)               | Register the client with `AddTeachMeHipaa` and customize its `HttpClient`     |
+| [Configure the client](articles/configure.md)                              | Set every option, time out a single call, log requests with `ILogger`        |
+| [Handle errors and retries](articles/handle-errors.md)                     | Catch typed exceptions, read request ids, make writes safe to repeat          |
+| [Iterate over paged results](articles/paginate.md)                         | Use `await foreach`, step through pages, cancel between pages                 |
+| [Read and follow the Event log](articles/event-log.md)                     | List Events by type and tail the log from a `BackgroundService`               |
+| [Receive webhooks in ASP.NET Core](articles/receive-webhooks.md)           | Subscribe, verify Deliveries, send Test deliveries, redrive failures          |
+| [Wait for long-running operations](articles/long-running-operations.md)    | Poll an `Operation` with `WaitAsync` and resume from another process          |
+| [Import and export files](articles/files.md)                               | Export CSV files, import a roster, download Certificate PDFs                  |
+| [Prevent lost updates with ETags](articles/optimistic-concurrency.md)      | Update with `If-Match`, send merge patches, skip unchanged reads              |
+| [Unit test code that uses the client](articles/unit-testing.md)            | Fake the transport, sign Deliveries, test a webhook endpoint                  |
+
+## Concepts
+
+| Article                                                             | Covers                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [Versioning and supported platforms](articles/support-policy.md)    | Target frameworks, semantic versioning, `OPENAPI_VERSION`, additive changes |
+
+## Reference
+
+- [Resource reference](reference/resources.md): each service and method
+  with its C# signature, HTTP call, Scopes, retry and idempotency
+  behavior, and options. `tools/Generator` writes it from the SDK IR.
+- [Code samples](reference/code-samples.json): one complete program per
+  API operation, for the C# tab of the TeachMeHIPAA API reference. The
+  generator writes it too, and `CodeSampleTests` compiles each program.
 - [API reference](https://teachmehipaa.github.io/teachmehipaa-dotnet/):
-  every public type and member with its XML documentation, built with
-  [DocFX](https://dotnet.github.io/docfx/) and published from `main`.
-  Build it locally with the command in
-  [CONTRIBUTING.md](../CONTRIBUTING.md#documentation).
+  every public type and member from the XML docs, built with
+  [DocFX](https://dotnet.github.io/docfx/) from [`docfx/`](docfx/) and
+  published from `main`.
 
 ## Examples
 
-[`examples/`](../examples/) holds small programs you can run against the
-Sandbox:
+Programs in [`examples/`](../examples/) that run against the Sandbox:
 
 - [`Quickstart`](../examples/Quickstart/): a first call.
 - [`SyncRoster`](../examples/SyncRoster/): sync a CSV roster with upserts
@@ -47,13 +61,12 @@ Sandbox:
 - [`ExportCertificates`](../examples/ExportCertificates/): export
   Certificates to a CSV file and wait for the Operation.
 
-## Contributing / design records
-
-For people working on the library rather than with it:
+## For contributors
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md): setup, checks, regeneration,
-  releases and how these docs are built.
-- [GLOSSARY.md](../GLOSSARY.md): the domain terms every SDK uses.
+  releases and how these docs are built and tested.
+- [GLOSSARY.md](../GLOSSARY.md): the domain terms every TeachMeHIPAA SDK
+  shares.
 - [`adr/`](adr/): architecture decision records.
   - [0001](adr/0001-generated-surface-from-shared-ir.md) Hand-written core,
     generated surface from one shared IR
@@ -75,6 +88,4 @@ For people working on the library rather than with it:
 - [`design/`](design/): the design grilling the SDKs were built from.
 - [`research/`](research/): research into Stripe's .NET library, whose
   conventions this library follows where they fit.
-- [`agents/`](agents/): how coding agents work in this repository (issue
-  tracker, triage labels, domain docs).
-- [`docfx/`](docfx/): the DocFX project that builds the API reference.
+- [`agents/`](agents/): how coding agents work in this repository.

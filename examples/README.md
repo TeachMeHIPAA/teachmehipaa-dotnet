@@ -3,7 +3,7 @@
 Small programs that use the library against the Sandbox. Each reads an API
 client's credentials from `TMH_CLIENT_ID` and `TMH_CLIENT_SECRET` (create
 one in the Sandbox Environment; see
-[Authentication](../docs/guides/authentication.md)). They build with the
+[Authenticate the client](../docs/articles/authenticate.md)). They build with the
 solution, so CI compiles them, but CI doesn't run them.
 
 | Example                                               | What it does                                                            |
