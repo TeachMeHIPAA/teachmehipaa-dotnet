@@ -8,7 +8,7 @@ namespace TeachMeHipaa;
 internal static class OptionChecks
 {
     private const string LiveBaseUrl = "https://api.tme.so/v1";
-    private const string SandboxBaseUrl = "https://api-teachmehipaa-dev.web.app/v1";
+    private const string SandboxBaseUrl = "https://sandbox.api.tme.so/v1";
 
     public static ArgumentException Invalid(string problem, string option) =>
         new($"{nameof(TeachMeHipaaClientOptions)}.{option} {problem}.", option);

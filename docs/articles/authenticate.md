@@ -80,7 +80,7 @@ Credentials work only in the Environment that issued them.
 | `Environment` value                      | Base URL                                  | Use it for                          |
 | ---------------------------------------- | ----------------------------------------- | ----------------------------------- |
 | `TeachMeHipaaEnvironment.Live` (default) | `https://api.tme.so/v1`                   | Your real Organization and Learners |
-| `TeachMeHipaaEnvironment.Sandbox`        | `https://api-teachmehipaa-dev.web.app/v1` | Development and tests               |
+| `TeachMeHipaaEnvironment.Sandbox`        | `https://sandbox.api.tme.so/v1` | Development and tests               |
 
 `Environment` defaults to `Live`. Pair Sandbox credentials with
 `TeachMeHipaaEnvironment.Sandbox`; credentials sent to the wrong

@@ -24,7 +24,7 @@ public partial class ReadmeTests
 
         Assert.Equal(["Compliant: 0.75", "ana@example.com in_progress"], readme.Printed);
         Assert.Equal("?limit=20", Assert.Single(readme.Handler.RequestsTo($"GET {Org}/learners")).Uri.Query);
-        Assert.All(readme.Handler.Requests, request => Assert.Equal("api-teachmehipaa-dev.web.app", request.Uri.Host));
+        Assert.All(readme.Handler.Requests, request => Assert.Equal("sandbox.api.tme.so", request.Uri.Host));
     }
 
     private static async Task ClientCredentials(ReadmeHarness readme)

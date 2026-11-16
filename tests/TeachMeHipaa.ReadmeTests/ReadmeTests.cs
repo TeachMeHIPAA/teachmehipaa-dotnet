@@ -141,7 +141,7 @@ public partial class ReadmeTests
 
         Assert.Equal(["Ana Example in_progress", "ana@example.com"], readme.Printed);
         Assert.Equal("status=in_progress", Assert.Single(readme.Handler.RequestsTo($"GET {Org}/learners")).Uri.Query.TrimStart('?'));
-        Assert.All(readme.Handler.Requests, request => Assert.Equal("api-teachmehipaa-dev.web.app", request.Uri.Host));
+        Assert.All(readme.Handler.Requests, request => Assert.Equal("sandbox.api.tme.so", request.Uri.Host));
     }
 
     private static async Task DependencyInjection(ReadmeHarness readme)
