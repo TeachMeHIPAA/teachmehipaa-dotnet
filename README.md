@@ -1,26 +1,36 @@
-# TeachMeHIPAA .NET Library
+# TeachMeHIPAA client library for .NET
 
 [![CI](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-The official .NET library for the TeachMeHIPAA Developer API: enroll your
-people in HIPAA training and track their compliance from your own systems.
+Use the TeachMeHIPAA client library for .NET to enroll your workforce in
+HIPAA training and track their compliance from your own HR system or back
+office.
+
+[Source code](src/TeachMeHipaa) |
+[Guides](docs/README.md) |
+[Resource reference](docs/reference/resources.md) |
+[API reference](https://teachmehipaa.github.io/teachmehipaa-dotnet/) |
+[Examples](examples/)
 
 > [!IMPORTANT]
-> **Status: pre-release.** The Developer API isn't generally available yet,
-> and this package isn't on NuGet. Until it is, build it from source as
-> shown below. Names and behavior can still change before 1.0.0.
+> **Preview.** The Developer API isn't generally available, and the
+> `TeachMeHipaa` package isn't on NuGet yet. Build the library from source
+> as described below. Type and member names can change before 1.0.0.
 
-The library handles Access tokens, the Organization binding, retries,
-idempotency keys, typed exceptions, pagination, ETags, Operations and
-webhook verification, so your code only calls methods. Every method is
-`async` and takes a `CancellationToken`. It targets `net8.0` and
-`netstandard2.0`, and is trimmable and AOT-compatible on .NET 8 and later.
+## Getting started
 
-## Installation
+### Prerequisites
 
-Clone the repository next to your project and reference the library's
-project from yours. Building it needs the .NET 8 SDK or later.
+- .NET 8 or later, or .NET Framework 4.6.2 or later through the
+  `netstandard2.0` build. Building from source needs the .NET 8 SDK or
+  later.
+- An API client created in the TeachMeHIPAA console, with its client id
+  (`cli_…`) and secret (`tmh_cs_…`). Start in the Sandbox Environment.
+
+### Install the library
+
+Clone this repository beside your project and add a project reference:
 
 ```sh
 git clone https://github.com/TeachMeHIPAA/teachmehipaa-dotnet.git
@@ -28,12 +38,14 @@ cd YourApp
 dotnet add reference ../teachmehipaa-dotnet/src/TeachMeHipaa/TeachMeHipaa.csproj
 ```
 
-Once the package is on NuGet, this becomes `dotnet add package TeachMeHipaa`.
+When the package ships, the command becomes
+`dotnet add package TeachMeHipaa`.
 
-## Quickstart
+### Authenticate the client
 
-Create an API client in the TeachMeHIPAA console to get a client id
-(`cli_…`) and secret (`tmh_cs_…`), and start in the Sandbox Environment:
+Pass the API client's credentials and the Environment they belong to.
+The client exchanges them for Access tokens and renews the tokens before
+they expire:
 
 <!-- sample: quickstart -->
 ```csharp
@@ -55,55 +67,71 @@ await foreach (var item in client.Learners.ListAutoPagingAsync(new() { Status = 
 }
 ```
 
-The [getting started guide](docs/guides/getting-started.md) walks through
-this step by step.
+In ASP.NET Core, register the client with `AddTeachMeHipaa` in place of
+`new`. See [Use dependency injection](docs/articles/dependency-injection.md).
 
-## Documentation
+## Key concepts
 
-Guides, each with tested samples:
+`TeachMeHipaaClient` is the entry point. Services hang off it, one per
+API resource: `Learners`, `Enrollments`, `Certificates`, `Compliance`,
+`WebhookSubscriptions` and the rest. A client acts for the one
+Organization its credentials belong to, so no method asks for an
+Organization id.
 
-- [Getting started](docs/guides/getting-started.md): install, credentials,
-  a first call, enrolling a Learner and dependency injection in ASP.NET
-  Core.
-- [Authentication](docs/guides/authentication.md): client credentials,
-  Scopes, Live and Sandbox Environments, the Organization binding, static
-  Access tokens and public lookups without credentials.
-- [Errors and retries](docs/guides/errors-and-retries.md): exception
-  classes, `Code`, request ids, retries and idempotency keys.
-- [Pagination and Events](docs/guides/pagination-and-events.md): pages,
-  `await foreach`, the Event log and `Events.TailAsync`.
-- [Webhooks](docs/guides/webhooks.md): Webhook subscriptions, verifying
-  Deliveries in ASP.NET Core minimal APIs and controllers, and Test
-  deliveries.
-- [Operations and files](docs/guides/operations-and-files.md):
-  `WaitAsync`, CSV exports and imports, and Certificate PDFs.
-- [Conditional requests](docs/guides/conditional-requests.md): ETags,
-  `If-Match`, `GetIfModifiedAsync` and merge-patch updates.
-- [Testing](docs/guides/testing.md): the Sandbox, a fake
-  `HttpMessageHandler` and signed test Deliveries.
-- [Configuration](docs/guides/configuration.md): every client option,
-  timeouts, your own `HttpClient` and logging.
-- [Versioning](docs/guides/versioning.md): semantic versioning, target
-  frameworks and how API changes reach the library.
+### Thread safety and lifetime
 
-Reference:
+The client is thread-safe. Create one per set of credentials and reuse it
+for the life of the process: it caches the Access token and the
+Organization. All clients share a pooled connection handler by default,
+so there is nothing to dispose.
 
-- [Resource reference](docs/reference/resources.md): every service and
-  method, with its signature, HTTP call, Scopes and return type.
-- [API reference](https://teachmehipaa.github.io/teachmehipaa-dotnet/):
-  every public type and member, built from the XML docs with DocFX.
-- [Examples](examples/): small programs you can run against the Sandbox.
+### Additional concepts
 
-The [docs index](docs/README.md) lists everything, design records included.
+| Concept | Where to read more |
+| --- | --- |
+| Client options, timeouts, `ILogger` logging | [Configure the client](docs/articles/configure.md) |
+| Typed exceptions, retries, idempotency keys | [Handle errors and retries](docs/articles/handle-errors.md) |
+| `await foreach` over list results | [Iterate over paged results](docs/articles/paginate.md) |
+| Exports, imports and other `Operation`s | [Wait for long-running operations](docs/articles/long-running-operations.md) |
+| ETags and merge-patch updates | [Prevent lost updates with ETags](docs/articles/optimistic-concurrency.md) |
+| Testing with a fake `HttpMessageHandler` | [Unit test code that uses the client](docs/articles/unit-testing.md) |
+| Target frameworks and versioning | [Versioning and supported platforms](docs/articles/support-policy.md) |
 
-## Support and security
+## Examples
+
+- [Quickstart: Call the API from a console app](docs/articles/quickstart.md)
+- [Authenticate the client](docs/articles/authenticate.md): Scopes,
+  Environments and public calls without credentials.
+- [Receive webhooks in ASP.NET Core](docs/articles/receive-webhooks.md):
+  verify signed Deliveries in a minimal API or a controller.
+- [Read and follow the Event log](docs/articles/event-log.md): tail Events
+  from a `BackgroundService`.
+- [Import and export files](docs/articles/files.md): CSV rosters and
+  Certificate PDFs.
+
+The [`examples/`](examples/) folder holds four complete programs that
+build with the solution.
+
+## Troubleshooting
+
+Every failed call throws a subclass of `TeachMeHipaaException`, chosen by
+HTTP status, such as `NotFoundException` for 404 or `RateLimitException`
+for 429. `Code` carries the API's machine-readable problem code, and
+`RequestId` identifies the call. Quote the request id when you contact
+TeachMeHIPAA support. The [error handling guide](docs/articles/handle-errors.md)
+lists every exception type.
 
 <!-- TODO(Nick): confirm the support address before launch. -->
 
-For help, contact TeachMeHIPAA support and quote the `RequestId` from the
-exception or `LastResponse`. To report a vulnerability, see
-[SECURITY.md](SECURITY.md); please don't open a public issue.
+## Next steps
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to work on the library, and the
-[changelog](CHANGELOG.md) for what changed. Licensed under the
-[MIT License](LICENSE).
+- Read the [guides](docs/README.md), each with compiled and tested
+  samples.
+- Browse every method in the [resource reference](docs/reference/resources.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to build and test the library, and
+the [changelog](CHANGELOG.md) for release notes. To report a security
+vulnerability, follow [SECURITY.md](SECURITY.md) and don't open a public
+issue. Licensed under the [MIT License](LICENSE).

@@ -41,53 +41,59 @@ public partial class ReadmeTests
         // README.md
         ["quickstart"] = Quickstart,
 
-        // docs/guides/getting-started.md
+        // docs/articles/quickstart.md
         ["first-call"] = FirstCall,
         ["learner-writes"] = LearnerWrites,
-        ["dependency-injection"] = DependencyInjection,
-        ["dependency-injection-endpoint"] = DependencyInjection,
 
-        // docs/guides/authentication.md
+        // docs/articles/authenticate.md
         ["client-credentials"] = ClientCredentials,
         ["organization"] = Organization,
         ["static-token"] = StaticToken,
         ["public-lookups"] = PublicLookups,
 
-        // docs/guides/errors-and-retries.md
-        ["errors"] = Errors,
-        ["request-options"] = RequestOptions,
+        // docs/articles/dependency-injection.md
+        ["dependency-injection"] = DependencyInjection,
+        ["dependency-injection-endpoint"] = DependencyInjection,
 
-        // docs/guides/pagination-and-events.md
-        ["pagination"] = Pagination,
-        ["events-list"] = EventsList,
-        ["events-tail"] = EventsTail,
-
-        // docs/guides/webhooks.md
-        ["webhook-subscription-create"] = WebhookSubscriptionCreate,
-        ["delivery-aspnetcore"] = DeliveryAspNetCore,
-        ["delivery-controller"] = DeliveryController,
-        ["webhook-test-delivery"] = WebhookTestDelivery,
-        ["delivery-test-headers"] = DeliveryTestHeaders,
-
-        // docs/guides/operations-and-files.md
-        ["operations"] = Operations,
-        ["certificates-export"] = CertificatesExport,
-        ["csv-import"] = CsvImport,
-        ["pdf-download"] = PdfDownload,
-
-        // docs/guides/conditional-requests.md
-        ["conditional-write"] = ConditionalWrite,
-        ["not-modified"] = NotModified,
-
-        // docs/guides/testing.md
-        ["fake-transport"] = FakeTransport,
-        ["webhook-handler-test"] = WebhookHandlerTest,
-
-        // docs/guides/configuration.md
+        // docs/articles/configure.md
         ["configuration"] = Configuration,
         ["timeouts"] = Timeouts,
         ["http-handler"] = HttpHandler,
         ["logging"] = Logging,
+
+        // docs/articles/handle-errors.md
+        ["errors"] = Errors,
+        ["request-options"] = RequestOptions,
+
+        // docs/articles/paginate.md
+        ["pagination"] = Pagination,
+
+        // docs/articles/event-log.md
+        ["events-list"] = EventsList,
+        ["events-tail"] = EventsTail,
+
+        // docs/articles/receive-webhooks.md
+        ["webhook-subscription-create"] = WebhookSubscriptionCreate,
+        ["delivery-aspnetcore"] = DeliveryAspNetCore,
+        ["delivery-controller"] = DeliveryController,
+        ["webhook-test-delivery"] = WebhookTestDelivery,
+
+        // docs/articles/long-running-operations.md
+        ["operations"] = Operations,
+
+        // docs/articles/files.md
+        ["certificates-export"] = CertificatesExport,
+        ["csv-import"] = CsvImport,
+        ["pdf-download"] = PdfDownload,
+
+        // docs/articles/optimistic-concurrency.md
+        ["conditional-write"] = ConditionalWrite,
+        ["not-modified"] = NotModified,
+
+        // docs/articles/unit-testing.md
+        ["fake-transport"] = FakeTransport,
+        ["delivery-test-headers"] = DeliveryTestHeaders,
+        ["webhook-handler-test"] = WebhookHandlerTest,
     };
 
     public static TheoryData<string> SampleIds => [.. ReadmeSamples.Ids];

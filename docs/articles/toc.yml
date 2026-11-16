@@ -1,0 +1,38 @@
+# The guides' table of contents on the DocFX site (docs/docfx). Keep it in
+# step with docs/README.md.
+- name: Get started
+  items:
+    - name: "Quickstart: Call the API from a console app"
+      href: quickstart.md
+- name: How-to guides
+  items:
+    - name: Authenticate the client
+      href: authenticate.md
+    - name: Use dependency injection
+      href: dependency-injection.md
+    - name: Configure the client
+      href: configure.md
+    - name: Handle errors and retries
+      href: handle-errors.md
+    - name: Iterate over paged results
+      href: paginate.md
+    - name: Read and follow the Event log
+      href: event-log.md
+    - name: Receive webhooks in ASP.NET Core
+      href: receive-webhooks.md
+    - name: Wait for long-running operations
+      href: long-running-operations.md
+    - name: Import and export files
+      href: files.md
+    - name: Prevent lost updates with ETags
+      href: optimistic-concurrency.md
+    - name: Unit test code that uses the client
+      href: unit-testing.md
+- name: Concepts
+  items:
+    - name: Versioning and supported platforms
+      href: support-policy.md
+- name: Reference
+  items:
+    - name: Resource reference
+      href: ../reference/resources.md

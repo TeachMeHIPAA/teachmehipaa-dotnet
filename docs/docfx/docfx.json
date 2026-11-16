@@ -31,6 +31,21 @@
           "index.md",
           "toc.yml"
         ]
+      },
+      {
+        "src": "../articles",
+        "files": [
+          "*.md",
+          "toc.yml"
+        ],
+        "dest": "articles"
+      },
+      {
+        "src": "../reference",
+        "files": [
+          "resources.md"
+        ],
+        "dest": "reference"
       }
     ],
     "output": "_site",
