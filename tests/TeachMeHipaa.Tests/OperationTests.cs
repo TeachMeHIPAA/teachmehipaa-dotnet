@@ -12,7 +12,7 @@ public class OperationTests
 {
     private const string OperationId = "0b7d4a8e-5c1f-4e2a-9d3b-6f8a1c2e4b7d";
 
-    // api-sdk-surface.md §8: an Operation's name is organizations/{orgId}/operations/{id}.
+    // The Developer API names an Operation organizations/{orgId}/operations/{id}.
     private const string OperationName = $"organizations/{OrgId}/operations/{OperationId}";
     private const string SubscriptionId = "whs_01JD8K2M4N6P8R0T2V4X6Z8B0D";
     private const string PollRoute = $"GET /v1/organizations/{OrgId}/operations/{OperationId}";

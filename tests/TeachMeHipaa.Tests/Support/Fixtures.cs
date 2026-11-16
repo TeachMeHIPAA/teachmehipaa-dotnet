@@ -13,7 +13,7 @@ public static class Fixtures
     public const string IntrospectionRoute = "GET /v1/auth/introspection";
     public const string LearnerRoute = $"GET /v1/organizations/{OrgId}/learners/{LearnerId}";
 
-    /// <summary><c>dev#/components/schemas/ClientCredentialsTokenResponse</c>, as in api-sdk-surface.md §2.1.</summary>
+    /// <summary><c>dev#/components/schemas/ClientCredentialsTokenResponse</c> in the vendored developer spec.</summary>
     public static ScriptedReply TokenReply(string accessToken = "access-token-1", int expiresIn = 900) => new()
     {
         Json = $$"""

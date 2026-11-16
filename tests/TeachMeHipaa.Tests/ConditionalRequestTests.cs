@@ -15,7 +15,7 @@ public class ConditionalRequestTests
     private const string CourseId = "hipaa-2026";
     private const string CourseRoute = $"GET /v1/courses/{CourseId}";
 
-    // Learners carry a quoted SHA-256 hex strong tag (api-sdk-surface.md §5).
+    // Learners carry a quoted SHA-256 hex strong tag.
     private const string LearnerETag = "\"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"";
 
     // Rev-based resources carry a quoted revision.

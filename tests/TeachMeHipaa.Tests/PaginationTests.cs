@@ -16,7 +16,7 @@ public class PaginationTests
         var handler = Scripted(
             LearnersRoute,
             PageReply([Learner("sub_1"), Learner("sub_2")], "cur_2"),
-            // Filters apply per page, so a page can be short with more to come (api-sdk-surface.md §4).
+            // Filters apply per page, so a page can be short with more to come.
             PageReply([], "cur_3"),
             PageReply([Learner("sub_3")], null));
         var client = NewClient(handler);
@@ -341,7 +341,7 @@ public class PaginationTests
     private static FakeHttpMessageHandler Scripted(string route, params ScriptedReply[] pages) =>
         new FakeHttpMessageHandler().Script(TokenRoute, TokenReply()).Script(route, pages);
 
-    /// <summary>A page as api-sdk-surface.md §4 describes it: <c>{ items, nextCursor }</c>.</summary>
+    /// <summary>A page as the Developer API returns it: <c>{ items, nextCursor }</c>.</summary>
     private static ScriptedReply PageReply(string[] items, string? nextCursor) => new()
     {
         Json = $$"""{"items":[{{string.Join(",", items)}}],"nextCursor":{{(nextCursor is null ? "null" : $"\"{nextCursor}\"")}}}""",

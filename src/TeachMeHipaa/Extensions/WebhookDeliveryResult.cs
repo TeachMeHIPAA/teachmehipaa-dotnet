@@ -14,7 +14,7 @@ namespace TeachMeHipaa;
 /// don't recognize.
 /// </remarks>
 // The spec leaves these Operations' response untyped; the webhook worker
-// settles them with one of these (api-sdk-surface.md §8).
+// settles them with one of these.
 [JsonConverter(typeof(WebhookDeliveryResultJsonConverter))]
 public abstract record WebhookDeliveryResult
 {

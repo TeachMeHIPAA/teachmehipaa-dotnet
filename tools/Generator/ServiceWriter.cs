@@ -9,7 +9,7 @@ namespace TeachMeHipaa.Generator;
 /// </summary>
 internal sealed class ServiceWriter
 {
-    // The Event log pages by the last Event's id (api-sdk-surface.md §4).
+    // The Event log pages by the last Event's id.
     private const string AfterPositionField = "eventId";
 
     private const string IfMatchProperty = MethodPlan.IfMatchProperty;

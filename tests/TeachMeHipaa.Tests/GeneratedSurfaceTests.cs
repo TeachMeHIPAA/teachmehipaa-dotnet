@@ -12,7 +12,9 @@ namespace TeachMeHipaa.Tests;
 /// </summary>
 public class GeneratedSurfaceTests
 {
-    // From api-sdk-surface.md §11 with the grilling's renames (Q12:
+    // From the Developer API reference (the vendored
+    // openapi/openapi.developer.json), written down independently of the
+    // generator, with the grilling's renames (Q12:
     // `retrieveLinks`; the IR: `delete`, not `del`, and `auth.introspect`) and
     // Q25's splits, in Stripe .NET's names: services are the plural resource,
     // `retrieve` is GetAsync, and every method is async. Each list also has
