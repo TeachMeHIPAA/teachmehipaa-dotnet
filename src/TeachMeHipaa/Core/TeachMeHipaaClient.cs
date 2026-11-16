@@ -32,13 +32,11 @@ public sealed partial class TeachMeHipaaClient
     /// </summary>
     public TeachMeHipaaWebhooks Webhooks { get; } = TeachMeHipaaWebhooks.Instance;
 
-    private static readonly OptionChecks TransportChecks = new(nameof(TeachMeHipaaClientOptions));
-
     private static ApiRequestor CreateRequestor(TeachMeHipaaClientOptions options, HttpMessageHandler? transport)
     {
         var config = ClientConfiguration.From(options);
 
-        transport ??= TransportChecks.Transport(options.HttpClient, options.HttpMessageHandler);
+        transport ??= OptionChecks.Transport(options.HttpClient, options.HttpMessageHandler);
         transport = new TimeoutHandler(config.Timeout, config.TimeProvider) { InnerHandler = transport };
         if (config.Logger is not null)
         {

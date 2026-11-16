@@ -1,25 +1,26 @@
 namespace TeachMeHipaa;
 
 /// <summary>
-/// Validates one options class's settings, naming the class and setting in
-/// each <see cref="ArgumentException"/> so a caller sees which one to fix.
+/// Validates <see cref="TeachMeHipaaClientOptions"/>, naming the class and
+/// setting in each <see cref="ArgumentException"/> so a caller sees which one
+/// to fix.
 /// </summary>
-internal sealed class OptionChecks(string owner)
+internal static class OptionChecks
 {
     private const string LiveBaseUrl = "https://api.tme.so/v1";
     private const string SandboxBaseUrl = "https://api-teachmehipaa-dev.web.app/v1";
 
-    public ArgumentException Invalid(string problem, string option) =>
-        new($"{owner}.{option} {problem}.", option);
+    public static ArgumentException Invalid(string problem, string option) =>
+        new($"{nameof(TeachMeHipaaClientOptions)}.{option} {problem}.", option);
 
-    public string RequireText(string? value, string option) =>
+    public static string RequireText(string? value, string option) =>
         string.IsNullOrWhiteSpace(value) ? throw Invalid("must be a non-empty string", option) : value!;
 
-    public TimeSpan RequirePositive(TimeSpan value, string option) =>
+    public static TimeSpan RequirePositive(TimeSpan value, string option) =>
         value > TimeSpan.Zero ? value : throw Invalid("must be positive", option);
 
     /// <summary>The base URL without a trailing slash: the explicit one, or the Environment's.</summary>
-    public string ResolveBaseUrl(TeachMeHipaaEnvironment environment, Uri? baseUrl)
+    public static string ResolveBaseUrl(TeachMeHipaaEnvironment environment, Uri? baseUrl)
     {
         if (baseUrl is not null)
         {
@@ -36,7 +37,7 @@ internal sealed class OptionChecks(string owner)
         };
     }
 
-    public string[] ResolveScopes(IReadOnlyList<string>? scopes)
+    public static string[] ResolveScopes(IReadOnlyList<string>? scopes)
     {
         if (scopes is null)
         {
@@ -49,13 +50,13 @@ internal sealed class OptionChecks(string owner)
             : copy;
     }
 
-    public string UserAgent(AppInfo? appInfo) =>
+    public static string UserAgent(AppInfo? appInfo) =>
         UserAgentHeader.Build(appInfo is not null && string.IsNullOrWhiteSpace(appInfo.Name)
             ? throw Invalid("Name must be a non-empty string", "AppInfo")
             : appInfo);
 
     /// <summary>The handler that ends a pipeline: the caller's, their HttpClient, or the shared pool.</summary>
-    public HttpMessageHandler Transport(HttpClient? httpClient, HttpMessageHandler? httpMessageHandler)
+    public static HttpMessageHandler Transport(HttpClient? httpClient, HttpMessageHandler? httpMessageHandler)
     {
         if (httpClient is not null && httpMessageHandler is not null)
         {

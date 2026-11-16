@@ -1,3 +1,7 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+
 namespace TeachMeHipaa;
 
 /// <summary>An API client's id, secret and the Scopes to request.</summary>
@@ -21,8 +25,11 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         _config = config;
         _credentials = credentials;
         _transport = transport;
-        _tokenUri = TokenEndpoint.UriFor(config.BaseUrl);
-        _basicCredentials = BasicCredentials.Encode(credentials.ClientId, credentials.ClientSecret);
+        _tokenUri = new Uri($"{config.BaseUrl}/auth/token");
+
+        // RFC 6749 §2.3.1: Basic credentials are form-encoded before base64.
+        _basicCredentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+            $"{WebUtility.UrlEncode(credentials.ClientId)}:{WebUtility.UrlEncode(credentials.ClientSecret)}"));
         _cache = new AccessTokenCache(MintAsync, config.TimeProvider);
     }
 
@@ -32,13 +39,7 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
 
     private async Task<CachedToken> MintAsync(CancellationToken cancellationToken)
     {
-        using var request = TokenRequest.Create(
-            _tokenUri,
-            _basicCredentials,
-            _config.UserAgent,
-            [new("grant_type", "client_credentials")],
-            _credentials.Scopes);
-        RequestProperties.RetrySafe.Set(request, true);
+        using var request = CreateTokenRequest();
 
         // Expiry counts from when the request left, so a slow response can't
         // stretch the token past its real lifetime.
@@ -54,5 +55,26 @@ internal sealed class ClientCredentialsTokenProvider : ITokenProvider
         }
 
         return new CachedToken(token.AccessToken, requestedAt + TimeSpan.FromSeconds(token.ExpiresIn.Value));
+    }
+
+    private HttpRequestMessage CreateTokenRequest()
+    {
+        var form = new List<KeyValuePair<string, string>> { new("grant_type", "client_credentials") };
+
+        // With no Scopes, scope is left out and the endpoint grants all the credential holds.
+        if (_credentials.Scopes.Count > 0)
+        {
+            form.Add(new("scope", string.Join(" ", _credentials.Scopes)));
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Post, _tokenUri)
+        {
+            Content = new FormUrlEncodedContent(form),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", _basicCredentials);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.TryAddWithoutValidation("User-Agent", _config.UserAgent);
+        RequestProperties.RetrySafe.Set(request, true);
+        return request;
     }
 }

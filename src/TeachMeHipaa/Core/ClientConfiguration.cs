@@ -18,8 +18,6 @@ internal sealed record ClientConfiguration(
     TimeProvider TimeProvider,
     ILogger? Logger)
 {
-    private static readonly OptionChecks Checks = new(nameof(TeachMeHipaaClientOptions));
-
     public static ClientConfiguration From(TeachMeHipaaClientOptions options)
     {
         if (options is null)
@@ -27,7 +25,7 @@ internal sealed record ClientConfiguration(
             throw new ArgumentNullException(nameof(options));
         }
 
-        var baseUrl = Checks.ResolveBaseUrl(options.Environment, options.BaseUrl);
+        var baseUrl = OptionChecks.ResolveBaseUrl(options.Environment, options.BaseUrl);
         // Half a credential pair is a mistake, not a request for a public client.
         var credentialsGiven = !string.IsNullOrEmpty(options.ClientId)
             || !string.IsNullOrEmpty(options.ClientSecret)
@@ -35,20 +33,20 @@ internal sealed record ClientConfiguration(
         return new ClientConfiguration(
             Credentials: options.TokenProvider is null && credentialsGiven
                 ? new ClientCredentials(
-                    Checks.RequireText(options.ClientId, nameof(options.ClientId)),
-                    Checks.RequireText(options.ClientSecret, nameof(options.ClientSecret)),
-                    Checks.ResolveScopes(options.Scopes))
+                    OptionChecks.RequireText(options.ClientId, nameof(options.ClientId)),
+                    OptionChecks.RequireText(options.ClientSecret, nameof(options.ClientSecret)),
+                    OptionChecks.ResolveScopes(options.Scopes))
                 : null,
             TokenProvider: options.TokenProvider is null ? null : CheckTokenProvider(options),
             BaseUrl: baseUrl,
             OrganizationId: options.OrganizationId is null
                 ? null
-                : Checks.RequireText(options.OrganizationId, nameof(options.OrganizationId)),
+                : OptionChecks.RequireText(options.OrganizationId, nameof(options.OrganizationId)),
             MaxRetries: options.MaxRetries >= 0
                 ? options.MaxRetries
-                : throw Checks.Invalid("must not be negative", nameof(options.MaxRetries)),
-            Timeout: Checks.RequirePositive(options.Timeout, nameof(options.Timeout)),
-            UserAgent: Checks.UserAgent(options.AppInfo),
+                : throw OptionChecks.Invalid("must not be negative", nameof(options.MaxRetries)),
+            Timeout: OptionChecks.RequirePositive(options.Timeout, nameof(options.Timeout)),
+            UserAgent: OptionChecks.UserAgent(options.AppInfo),
             TimeProvider: options.TimeProvider ?? TimeProvider.System,
             Logger: options.Logger);
     }
@@ -66,7 +64,7 @@ internal sealed record ClientConfiguration(
         }.FirstOrDefault(option => option.Given);
         if (conflicting.Given)
         {
-            throw Checks.Invalid(
+            throw OptionChecks.Invalid(
                 $"must not be set with {nameof(options.TokenProvider)}: give a token provider or an API client's "
                     + "credentials, not both (Scopes belong to the token provider)",
                 conflicting.Name);

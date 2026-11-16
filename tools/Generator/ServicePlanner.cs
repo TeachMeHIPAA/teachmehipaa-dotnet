@@ -346,7 +346,7 @@ internal sealed partial class ResourceNode(IReadOnlyList<string> path)
 
     public string ClassName => Naming.SingularResource(Path) + "Service";
 
-    /// <summary><c>webhookSubscriptions</c> → "Webhook subscriptions"; <c>webhookSubscriptions.deliveries</c> → "Webhook subscription deliveries".</summary>
+    /// <summary><c>widgets</c> → "Widgets"; <c>widgets.parts</c> → "Widget parts".</summary>
     public string Title
     {
         get

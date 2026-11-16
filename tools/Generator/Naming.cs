@@ -57,7 +57,7 @@ internal static partial class Naming
     public static string Singular(string segment) =>
         segment.EndsWith('s') ? segment[..^1] : segment;
 
-    /// <summary><c>["webhookSubscriptions", "deliveries"]</c> → <c>WebhookSubscriptionDelivery</c>.</summary>
+    /// <summary><c>["widgets", "parts"]</c> → <c>WidgetPart</c>.</summary>
     public static string SingularResource(IEnumerable<string> path) =>
         string.Concat(path.Select(segment => Pascal(Singular(segment))));
 
