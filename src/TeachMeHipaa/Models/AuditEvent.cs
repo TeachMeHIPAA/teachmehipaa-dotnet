@@ -8,7 +8,7 @@ namespace TeachMeHipaa;
 
 /// <summary>One of the API's kinds of <c>AuditEvent</c>.</summary>
 /// <remarks>
-/// Known kinds: <see cref="AuditEventApiClientCreated"/>, <see cref="AuditEventApiClientRevoked"/>, <see cref="AuditEventApiClientSecretRotated"/>, <see cref="AuditEventApiClientUpdated"/>, <see cref="AuditEventCertificateIssued"/>, <see cref="AuditEventCertificateRevoked"/>, <see cref="AuditEventEnrollmentTransition"/>, <see cref="AuditEventLearnerLaunchLinkCreated"/>, <see cref="AuditEventLearnerUpdated"/>, <see cref="AuditEventMemberRemoved"/>, <see cref="AuditEventMemberRoleChanged"/>, <see cref="AuditEventMemberTransferred"/>, <see cref="AuditEventOauthGrantCreated"/>, <see cref="AuditEventOauthGrantRevoked"/>, <see cref="AuditEventOauthGrantUpdated"/>, <see cref="AuditEventOrganizationClosed"/>, <see cref="AuditEventOrganizationCreatedByPartner"/>, <see cref="AuditEventOrganizationReopened"/>, <see cref="AuditEventOrganizationUpdated"/>, <see cref="AuditEventSeatGranted"/>, <see cref="AuditEventSeatOrderCreated"/>, <see cref="AuditEventSeatOrderFailed"/>, <see cref="AuditEventSeatOrderPaid"/>, <see cref="UnknownAuditEvent"/>.
+/// Known kinds: <see cref="AuditEventApiClientCreated"/>, <see cref="AuditEventApiClientRevoked"/>, <see cref="AuditEventApiClientSecretRotated"/>, <see cref="AuditEventApiClientUpdated"/>, <see cref="AuditEventCertificateIssued"/>, <see cref="AuditEventCertificateRevoked"/>, <see cref="AuditEventEnrollmentTransition"/>, <see cref="AuditEventLearnerLaunchLinkCreated"/>, <see cref="AuditEventLearnerUpdated"/>, <see cref="AuditEventMemberRemoved"/>, <see cref="AuditEventMemberRoleChanged"/>, <see cref="AuditEventMemberTransferred"/>, <see cref="AuditEventOrganizationClosed"/>, <see cref="AuditEventOrganizationReopened"/>, <see cref="AuditEventOrganizationUpdated"/>, <see cref="AuditEventSeatGranted"/>, <see cref="UnknownAuditEvent"/>.
 /// Chosen by <c>type</c>; any other value reads as <see cref="UnknownAuditEvent"/>.
 /// </remarks>
 [JsonConverter(typeof(AuditEventJsonConverter))]
@@ -42,17 +42,10 @@ internal sealed class AuditEventJsonConverter : JsonConverter<AuditEvent>
             "member.removed" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventMemberRemoved),
             "member.role_changed" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventMemberRoleChanged),
             "member.transferred" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventMemberTransferred),
-            "oauth_grant.created" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOauthGrantCreated),
-            "oauth_grant.revoked" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOauthGrantRevoked),
-            "oauth_grant.updated" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOauthGrantUpdated),
             "organization.closed" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOrganizationClosed),
-            "organization.created_by_partner" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOrganizationCreatedByPartner),
             "organization.reopened" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOrganizationReopened),
             "organization.updated" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventOrganizationUpdated),
             "seat.granted" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventSeatGranted),
-            "seat_order.created" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventSeatOrderCreated),
-            "seat_order.failed" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventSeatOrderFailed),
-            "seat_order.paid" => json.Deserialize(TeachMeHipaaJsonContext.Default.AuditEventSeatOrderPaid),
             _ => json.Deserialize(TeachMeHipaaJsonContext.Default.UnknownAuditEvent),
         };
     }
@@ -97,20 +90,8 @@ internal sealed class AuditEventJsonConverter : JsonConverter<AuditEvent>
             case AuditEventMemberTransferred member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventMemberTransferred);
                 break;
-            case AuditEventOauthGrantCreated member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOauthGrantCreated);
-                break;
-            case AuditEventOauthGrantRevoked member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOauthGrantRevoked);
-                break;
-            case AuditEventOauthGrantUpdated member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOauthGrantUpdated);
-                break;
             case AuditEventOrganizationClosed member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOrganizationClosed);
-                break;
-            case AuditEventOrganizationCreatedByPartner member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOrganizationCreatedByPartner);
                 break;
             case AuditEventOrganizationReopened member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventOrganizationReopened);
@@ -120,15 +101,6 @@ internal sealed class AuditEventJsonConverter : JsonConverter<AuditEvent>
                 break;
             case AuditEventSeatGranted member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventSeatGranted);
-                break;
-            case AuditEventSeatOrderCreated member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventSeatOrderCreated);
-                break;
-            case AuditEventSeatOrderFailed member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventSeatOrderFailed);
-                break;
-            case AuditEventSeatOrderPaid member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.AuditEventSeatOrderPaid);
                 break;
             case UnknownAuditEvent member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.UnknownAuditEvent);

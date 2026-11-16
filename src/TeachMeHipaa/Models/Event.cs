@@ -8,7 +8,7 @@ namespace TeachMeHipaa;
 
 /// <summary>One of the API's kinds of <c>Event</c>.</summary>
 /// <remarks>
-/// Known kinds: <see cref="EventCertificateRevoked"/>, <see cref="EventEnrollmentCertified"/>, <see cref="EventInviteBounced"/>, <see cref="EventLearnerCertified"/>, <see cref="EventLearnerExpired"/>, <see cref="EventLearnerExpiring"/>, <see cref="EventLearnerInvited"/>, <see cref="EventLearnerRemoved"/>, <see cref="EventLearnerStarted"/>, <see cref="EventSeatConsumed"/>, <see cref="EventSeatFreed"/>, <see cref="EventSeatOrderExpired"/>, <see cref="EventSeatOrderFailed"/>, <see cref="EventSeatOrderPaid"/>, <see cref="EventSeatsLow"/>, <see cref="UnknownEvent"/>.
+/// Known kinds: <see cref="EventCertificateRevoked"/>, <see cref="EventEnrollmentCertified"/>, <see cref="EventInviteBounced"/>, <see cref="EventLearnerCertified"/>, <see cref="EventLearnerExpired"/>, <see cref="EventLearnerExpiring"/>, <see cref="EventLearnerInvited"/>, <see cref="EventLearnerRemoved"/>, <see cref="EventLearnerStarted"/>, <see cref="EventSeatConsumed"/>, <see cref="EventSeatFreed"/>, <see cref="EventSeatsLow"/>, <see cref="UnknownEvent"/>.
 /// Chosen by <c>eventType</c>; any other value reads as <see cref="UnknownEvent"/>.
 /// </remarks>
 [JsonConverter(typeof(EventJsonConverter))]
@@ -53,9 +53,6 @@ internal sealed class EventJsonConverter : JsonConverter<Event>
             "learner.started" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventLearnerStarted),
             "seat.consumed" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatConsumed),
             "seat.freed" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatFreed),
-            "seat_order.expired" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatOrderExpired),
-            "seat_order.failed" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatOrderFailed),
-            "seat_order.paid" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatOrderPaid),
             "seats.low" => json.Deserialize(TeachMeHipaaJsonContext.Default.EventSeatsLow),
             _ => json.Deserialize(TeachMeHipaaJsonContext.Default.UnknownEvent),
         };
@@ -97,15 +94,6 @@ internal sealed class EventJsonConverter : JsonConverter<Event>
                 break;
             case EventSeatFreed member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.EventSeatFreed);
-                break;
-            case EventSeatOrderExpired member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.EventSeatOrderExpired);
-                break;
-            case EventSeatOrderFailed member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.EventSeatOrderFailed);
-                break;
-            case EventSeatOrderPaid member:
-                JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.EventSeatOrderPaid);
                 break;
             case EventSeatsLow member:
                 JsonSerializer.Serialize(writer, member, TeachMeHipaaJsonContext.Default.EventSeatsLow);

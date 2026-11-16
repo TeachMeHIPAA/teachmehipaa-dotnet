@@ -7,17 +7,17 @@ All notable changes to this library are documented here. It follows
 ## [Unreleased]
 
 The first release, to ship as 1.0.0 when the Developer API launches.
-Generated from the Developer API document release `waggish-wombat`.
+Generated from the Developer API document release `trimmed-2026-11-15`.
 
 ### Added
 
-- `TeachMeHipaaClient`, covering all 56 Developer API operations: the token
+- `TeachMeHipaaClient`, covering all 44 Developer API operations: the token
   endpoint through its built-in authentication, and the rest as async
   services and models generated from the shared SDK IR: Learners,
   Enrollments, Certificates, Certificate verifications, Compliance, Courses,
-  Members, Seats, Seat orders, the payment method, Audit events, Webhook
-  subscriptions, the Event log, Operations, `Auth.IntrospectAsync` and
-  Partners. Every method takes a `CancellationToken`.
+  Members, Seats, Audit events, Webhook subscriptions, the Event log,
+  Operations and `Auth.IntrospectAsync`. Every method takes a
+  `CancellationToken`.
 - Client credentials authentication with cached, single-flight Access tokens
   renewed 60 s before expiry, and one renewal and replay on a 401.
 - Live and Sandbox Environments, a `BaseUrl` override, narrower `Scopes`, and

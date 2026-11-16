@@ -57,31 +57,6 @@ public class GeneratedServiceTests
     }
 
     [Fact]
-    public async Task ListsAPartnersOrganizationsWithoutLookingUpAnOrganization()
-    {
-        const string route = "GET /v1/partners/ptn_01JD9/organizations";
-        var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply())
-            .Script(route, new ScriptedReply
-            {
-                Json = """
-                    {"items":[{"orgId":"org_beta","name":"Beta Dental","createdAt":"2026-11-02T10:00:00.000Z","grantActive":true}],"nextCursor":"cur_2"}
-                    """,
-            });
-        var client = NewClient(handler, organizationId: null);
-
-        var page = await client.Partners.Organizations.ListAsync("ptn_01JD9", new PartnerOrganizationListOptions { Limit = 1 });
-
-        var organization = Assert.Single(page.Items);
-        Assert.Equal("Beta Dental", organization.Name);
-        Assert.Equal(new DateTimeOffset(2026, 11, 2, 10, 0, 0, TimeSpan.Zero), organization.CreatedAt);
-        Assert.Equal("cur_2", page.NextCursor);
-        Assert.Equal(HttpStatusCode.OK, page.LastResponse?.StatusCode);
-        Assert.Equal("?limit=1", Assert.Single(handler.RequestsTo(route)).Uri.Query);
-        Assert.Empty(handler.RequestsTo(IntrospectionRoute));
-    }
-
-    [Fact]
     public async Task UpdatesAWebhookSubscriptionWithAMergePatchAndIfMatch()
     {
         var route = $"PATCH /v1/organizations/{OrgId}/webhook-subscriptions/whs_01JD9";
@@ -109,17 +84,18 @@ public class GeneratedServiceTests
     }
 
     [Fact]
-    public async Task RemovesThePaymentMethodWithA204()
+    public async Task DeletesAWebhookSubscriptionWithA204()
     {
-        var route = $"DELETE /v1/organizations/{OrgId}/billing/payment-method";
+        var route = $"DELETE /v1/organizations/{OrgId}/webhook-subscriptions/whs_01JD9";
         var handler = new FakeHttpMessageHandler()
             .Script(TokenRoute, TokenReply())
             .Script(route, new ScriptedReply { Status = HttpStatusCode.NoContent });
         var client = NewClient(handler);
 
-        var response = await client.PaymentMethod.DeleteAsync();
+        var response = await client.WebhookSubscriptions.DeleteAsync("whs_01JD9");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Null(Assert.Single(handler.RequestsTo(route)).Body);
     }
 
     public static TheoryData<HttpStatusCode, bool> WriteResults => new()
@@ -229,22 +205,26 @@ public class GeneratedServiceTests
     }
 
     [Fact]
-    public async Task ListsCoursesWithoutAnAccessToken()
+    public async Task ListsCoursesWithoutAnAccessTokenOrLookingUpAnOrganization()
     {
         const string route = "GET /v1/courses";
         var handler = new FakeHttpMessageHandler()
             .Script(route, new ScriptedReply
             {
                 Json = """
-                    {"items":[{"courseId":"hipaa-2026","title":"HIPAA Training 2026","courseVersion":"2026.1","passingThreshold":0.8}],"nextCursor":null}
+                    {"items":[{"courseId":"hipaa-2026","title":"HIPAA Training 2026","courseVersion":"2026.1","passingThreshold":0.8}],"nextCursor":"cur_2"}
                     """,
             });
         var client = NewClient(handler, organizationId: null);
 
-        var page = await client.Courses.ListAsync();
+        var page = await client.Courses.ListAsync(new CourseListOptions { Limit = 1 });
 
         Assert.Equal(0.8, Assert.Single(page.Items).PassingThreshold);
-        Assert.Null(Assert.Single(handler.RequestsTo(route)).Header("Authorization"));
+        Assert.Equal("cur_2", page.NextCursor);
+        Assert.Equal(HttpStatusCode.OK, page.LastResponse?.StatusCode);
+        var request = Assert.Single(handler.RequestsTo(route));
+        Assert.Equal("?limit=1", request.Uri.Query);
+        Assert.Null(request.Header("Authorization"));
         Assert.Empty(handler.RequestsTo(TokenRoute));
         Assert.Empty(handler.RequestsTo(IntrospectionRoute));
     }
@@ -265,6 +245,7 @@ public class GeneratedServiceTests
         var verification = await client.CertificateVerifications.GetAsync("Ab3dE");
 
         Assert.Equal(CertificateVerificationStatus.Valid, verification.Status);
+        Assert.Equal(new DateTimeOffset(2026, 11, 3, 8, 0, 0, TimeSpan.Zero), verification.IssuedAt);
         Assert.Null(Assert.Single(handler.RequestsTo(route)).Header("Authorization"));
         Assert.Empty(handler.RequestsTo(TokenRoute));
     }
@@ -298,33 +279,5 @@ public class GeneratedServiceTests
         Assert.True(JsonNode.DeepEquals(
             JsonNode.Parse("""{"operation":"archive","select":{"filter":{"courseId":"hipaa-2025"}}}"""),
             JsonNode.Parse(requests[1].Body!)));
-    }
-
-    [Fact]
-    public async Task OrdersSeatsWithAPaymentMethodVariantAndReadsTheNextAction()
-    {
-        var route = $"POST /v1/organizations/{OrgId}/seat-orders";
-        var handler = new FakeHttpMessageHandler()
-            .Script(TokenRoute, TokenReply())
-            .Script(route, new ScriptedReply
-            {
-                Status = HttpStatusCode.Created,
-                Json = """
-                    {"seatOrderId":"so_01JD9","status":"invoiced","nextAction":{"type":"invoice","hostedInvoiceUrl":"https://pay.example.com/i/1"},"failure":null}
-                    """,
-            });
-        var client = NewClient(handler);
-
-        var order = await client.SeatOrders.CreateAsync(new SeatOrderCreateOptions
-        {
-            Quantity = 5,
-            Payment = new SeatOrderCreateRequestPaymentInvoice { DaysUntilDue = 30 },
-        });
-
-        Assert.Equal(SeatOrderCreatedStatus.Invoiced, order.Status);
-        Assert.IsType<SeatOrderCreatedNextActionInvoice>(order.NextAction);
-        Assert.True(JsonNode.DeepEquals(
-            JsonNode.Parse("""{"quantity":5,"payment":{"method":"invoice","daysUntilDue":30}}"""),
-            JsonNode.Parse(Assert.Single(handler.RequestsTo(route)).Body!)));
     }
 }

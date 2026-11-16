@@ -119,36 +119,6 @@ public readonly record struct ProblemCode
     /// <summary><c>cannot_offboard_admin</c>.</summary>
     public static ProblemCode CannotOffboardAdmin { get; } = new("cannot_offboard_admin");
 
-    /// <summary><c>spend_limit_exceeded</c>.</summary>
-    public static ProblemCode SpendLimitExceeded { get; } = new("spend_limit_exceeded");
-
-    /// <summary><c>payment_method_not_available</c>.</summary>
-    public static ProblemCode PaymentMethodNotAvailable { get; } = new("payment_method_not_available");
-
-    /// <summary><c>return_url_not_allowed</c>.</summary>
-    public static ProblemCode ReturnUrlNotAllowed { get; } = new("return_url_not_allowed");
-
-    /// <summary><c>currency_not_available</c>.</summary>
-    public static ProblemCode CurrencyNotAvailable { get; } = new("currency_not_available");
-
-    /// <summary><c>payment_method_required</c>.</summary>
-    public static ProblemCode PaymentMethodRequired { get; } = new("payment_method_required");
-
-    /// <summary><c>payment_method_changed</c>.</summary>
-    public static ProblemCode PaymentMethodChanged { get; } = new("payment_method_changed");
-
-    /// <summary><c>price_changed</c>.</summary>
-    public static ProblemCode PriceChanged { get; } = new("price_changed");
-
-    /// <summary><c>superseded</c>.</summary>
-    public static ProblemCode Superseded { get; } = new("superseded");
-
-    /// <summary><c>setup_not_succeeded</c>.</summary>
-    public static ProblemCode SetupNotSucceeded { get; } = new("setup_not_succeeded");
-
-    /// <summary><c>invoice_billing_not_enabled</c>.</summary>
-    public static ProblemCode InvoiceBillingNotEnabled { get; } = new("invoice_billing_not_enabled");
-
     /// <summary><c>cannot_launch_admin</c>.</summary>
     public static ProblemCode CannotLaunchAdmin { get; } = new("cannot_launch_admin");
 
@@ -157,12 +127,6 @@ public readonly record struct ProblemCode
 
     /// <summary><c>learner_not_accepted</c>.</summary>
     public static ProblemCode LearnerNotAccepted { get; } = new("learner_not_accepted");
-
-    /// <summary><c>partner_org_limit_reached</c>.</summary>
-    public static ProblemCode PartnerOrgLimitReached { get; } = new("partner_org_limit_reached");
-
-    /// <summary><c>billing_contact_required</c>.</summary>
-    public static ProblemCode BillingContactRequired { get; } = new("billing_contact_required");
 
     /// <summary><c>cannot_rename_admin</c>.</summary>
     public static ProblemCode CannotRenameAdmin { get; } = new("cannot_rename_admin");

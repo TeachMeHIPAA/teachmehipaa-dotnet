@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace TeachMeHipaa;
 
-/// <summary><c>client</c> for an API client or partner app, <c>user</c> for a person.</summary>
+/// <summary><c>client</c> for an API client, <c>user</c> for a person.</summary>
 /// <remarks>
 /// New values may appear at any time, so this holds any string; compare
 /// against the known values.

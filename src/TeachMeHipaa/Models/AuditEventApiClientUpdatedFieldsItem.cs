@@ -23,15 +23,6 @@ public readonly record struct AuditEventApiClientUpdatedFieldsItem
     /// <summary><c>name</c>.</summary>
     public static AuditEventApiClientUpdatedFieldsItem Name { get; } = new("name");
 
-    /// <summary><c>maxSeatsPerOrder</c>.</summary>
-    public static AuditEventApiClientUpdatedFieldsItem MaxSeatsPerOrder { get; } = new("maxSeatsPerOrder");
-
-    /// <summary><c>maxSpendPer30Days</c>.</summary>
-    public static AuditEventApiClientUpdatedFieldsItem MaxSpendPer30Days { get; } = new("maxSpendPer30Days");
-
-    /// <summary><c>returnUrlAllowlist</c>.</summary>
-    public static AuditEventApiClientUpdatedFieldsItem ReturnUrlAllowlist { get; } = new("returnUrlAllowlist");
-
     /// <summary>The value as the API sends it.</summary>
     public string Value => _value ?? string.Empty;
 

@@ -56,15 +56,6 @@ public readonly record struct EventType
     /// <summary><c>seats.low</c>.</summary>
     public static EventType SeatsLow { get; } = new("seats.low");
 
-    /// <summary><c>seat_order.paid</c>.</summary>
-    public static EventType SeatOrderPaid { get; } = new("seat_order.paid");
-
-    /// <summary><c>seat_order.failed</c>.</summary>
-    public static EventType SeatOrderFailed { get; } = new("seat_order.failed");
-
-    /// <summary><c>seat_order.expired</c>.</summary>
-    public static EventType SeatOrderExpired { get; } = new("seat_order.expired");
-
     /// <summary>The value as the API sends it.</summary>
     public string Value => _value ?? string.Empty;
 

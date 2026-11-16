@@ -18,9 +18,6 @@ public sealed partial class TeachMeHipaaClient
         Learners = new LearnerService(requestor);
         Members = new MemberService(requestor);
         Operations = new OperationService(requestor);
-        Partners = new PartnerService(requestor);
-        PaymentMethod = new PaymentMethodService(requestor);
-        SeatOrders = new SeatOrderService(requestor);
         Seats = new SeatService(requestor);
         WebhookSubscriptions = new WebhookSubscriptionService(requestor);
     }
@@ -57,15 +54,6 @@ public sealed partial class TeachMeHipaaClient
 
     /// <summary>The Developer API's Operations endpoints.</summary>
     public OperationService Operations { get; }
-
-    /// <summary>The Developer API's Partners endpoints.</summary>
-    public PartnerService Partners { get; }
-
-    /// <summary>The Developer API's Payment method endpoints.</summary>
-    public PaymentMethodService PaymentMethod { get; }
-
-    /// <summary>The Developer API's Seat orders endpoints.</summary>
-    public SeatOrderService SeatOrders { get; }
 
     /// <summary>The Developer API's Seats endpoints.</summary>
     public SeatService Seats { get; }

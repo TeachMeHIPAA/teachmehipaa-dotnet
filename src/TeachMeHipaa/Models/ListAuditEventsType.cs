@@ -62,32 +62,11 @@ public readonly record struct ListAuditEventsType
     /// <summary><c>learner.updated</c>.</summary>
     public static ListAuditEventsType LearnerUpdated { get; } = new("learner.updated");
 
-    /// <summary><c>oauth_grant.created</c>.</summary>
-    public static ListAuditEventsType OauthGrantCreated { get; } = new("oauth_grant.created");
-
-    /// <summary><c>oauth_grant.revoked</c>.</summary>
-    public static ListAuditEventsType OauthGrantRevoked { get; } = new("oauth_grant.revoked");
-
-    /// <summary><c>seat_order.created</c>.</summary>
-    public static ListAuditEventsType SeatOrderCreated { get; } = new("seat_order.created");
-
-    /// <summary><c>seat_order.paid</c>.</summary>
-    public static ListAuditEventsType SeatOrderPaid { get; } = new("seat_order.paid");
-
-    /// <summary><c>seat_order.failed</c>.</summary>
-    public static ListAuditEventsType SeatOrderFailed { get; } = new("seat_order.failed");
-
     /// <summary><c>learner.launch_link_created</c>.</summary>
     public static ListAuditEventsType LearnerLaunchLinkCreated { get; } = new("learner.launch_link_created");
 
     /// <summary><c>api_client.updated</c>.</summary>
     public static ListAuditEventsType ApiClientUpdated { get; } = new("api_client.updated");
-
-    /// <summary><c>oauth_grant.updated</c>.</summary>
-    public static ListAuditEventsType OauthGrantUpdated { get; } = new("oauth_grant.updated");
-
-    /// <summary><c>organization.created_by_partner</c>.</summary>
-    public static ListAuditEventsType OrganizationCreatedByPartner { get; } = new("organization.created_by_partner");
 
     /// <summary>The value as the API sends it.</summary>
     public string Value => _value ?? string.Empty;

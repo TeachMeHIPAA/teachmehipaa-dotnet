@@ -56,18 +56,6 @@ public class GeneratedSurfaceTests
         ["listMembers"] = ["Members.ListAsync", "Members.ListAutoPagingAsync"],
         ["getMember"] = ["Members.GetAsync"],
         ["getOperation"] = ["Operations.GetAsync"],
-        ["getPartner"] = ["Partners.GetAsync"],
-        ["createPartnerOrganization"] = ["Partners.Organizations.CreateAsync"],
-        ["listPartnerOrganizations"] = ["Partners.Organizations.ListAsync", "Partners.Organizations.ListAutoPagingAsync"],
-        ["confirmPaymentMethod"] = ["PaymentMethod.ConfirmAsync"],
-        ["removePaymentMethod"] = ["PaymentMethod.DeleteAsync"],
-        ["preparePaymentMethod"] = ["PaymentMethod.PrepareAsync"],
-        ["getPaymentMethod"] = ["PaymentMethod.GetAsync"],
-        ["setupPaymentMethod"] = ["PaymentMethod.SetupAsync"],
-        ["createSeatOrder"] = ["SeatOrders.CreateAsync"],
-        ["listSeatOrders"] = ["SeatOrders.ListAsync", "SeatOrders.ListAutoPagingAsync"],
-        ["quoteSeatOrder"] = ["SeatOrders.QuoteAsync"],
-        ["getSeatOrder"] = ["SeatOrders.GetAsync", "SeatOrders.GetIfModifiedAsync"],
         ["getSeatInventory"] = ["Seats.GetAsync"],
         ["createWebhookSubscription"] = ["WebhookSubscriptions.CreateAsync"],
         ["deleteWebhookSubscription"] = ["WebhookSubscriptions.DeleteAsync"],
@@ -111,7 +99,7 @@ public class GeneratedSurfaceTests
             .Select(operation => operation.Value.GetProperty("operationId").GetString()!)
             .ToHashSet();
 
-        Assert.Equal(56, operationIds.Count);
+        Assert.Equal(44, operationIds.Count);
         Assert.Equal(
             ExpectedMethods.Keys.Order(StringComparer.Ordinal),
             operationIds.Except(HandWritten).Order(StringComparer.Ordinal));
@@ -120,7 +108,7 @@ public class GeneratedSurfaceTests
     [Fact]
     public void TheClientExposesExactlyTheExpectedMethods()
     {
-        Assert.Equal(72, ExpectedNames.Length);
+        Assert.Equal(57, ExpectedNames.Length);
         Assert.Equal(
             ExpectedNames.Concat(Extensions).Order(StringComparer.Ordinal),
             ServiceMethods(typeof(TeachMeHipaaClient), "").Select(entry => entry.Name).Order(StringComparer.Ordinal));
@@ -136,7 +124,7 @@ public class GeneratedSurfaceTests
                 Name: DotNetName(resource.GetProperty("path").EnumerateArray().Select(segment => segment.GetString()!), method.GetProperty("name").GetString()!))))
             .ToList();
 
-        Assert.Equal(57, methods.Select(method => method.Name).Distinct().Count());
+        Assert.Equal(45, methods.Select(method => method.Name).Distinct().Count());
         Assert.All(methods, method => Assert.Contains(method.Name, ExpectedMethods[method.OperationId]));
     }
 
@@ -160,17 +148,13 @@ public class GeneratedSurfaceTests
     }
 
     [Fact]
-    public void OrgScopedMethodsTakeNoOrgIdAndPartnerMethodsTakeAPartnerId()
+    public void OrgScopedMethodsTakeNoOrgId()
     {
         Assert.All(ServiceMethods(typeof(TeachMeHipaaClient), ""), entry =>
         {
             var names = entry.Method.GetParameters().Select(parameter => parameter.Name).ToList();
             Assert.DoesNotContain("orgId", names);
             Assert.DoesNotContain("organizationId", names);
-            if (entry.Name.StartsWith("Partners.", StringComparison.Ordinal))
-            {
-                Assert.Equal("partnerId", names[0]);
-            }
         });
     }
 
@@ -185,8 +169,11 @@ public class GeneratedSurfaceTests
         Assert.Equal(typeof(LearnerUpdateOptions), learners.GetMethod(nameof(LearnerService.UpdateAsync))!.GetParameters()[1].ParameterType);
         Assert.Equal(typeof(EnrollmentListOptions), typeof(EnrollmentService).GetMethod(nameof(EnrollmentService.ListAsync))!.GetParameters()[0].ParameterType);
         Assert.Equal(
-            typeof(PartnerOrganizationListOptions),
-            typeof(PartnerOrganizationService).GetMethod(nameof(PartnerOrganizationService.ListAsync))!.GetParameters()[1].ParameterType);
+            ["externalId", "options", "requestOptions", "cancellationToken"],
+            learners.GetMethod(nameof(LearnerService.UpsertByExternalIdAsync))!.GetParameters().Select(parameter => parameter.Name));
+        Assert.Equal(
+            typeof(LearnerUpsertByExternalIdOptions),
+            learners.GetMethod(nameof(LearnerService.UpsertByExternalIdAsync))!.GetParameters()[1].ParameterType);
     }
 
     [Fact]
@@ -217,7 +204,7 @@ public class GeneratedSurfaceTests
             && entry.Value.ReturnType.GetGenericArguments()[0] is { IsGenericType: true } page
             && page.GetGenericTypeDefinition() == typeof(Page<>)).ToList();
 
-        Assert.Equal(10, lists.Count);
+        Assert.Equal(8, lists.Count);
         Assert.All(lists, list =>
         {
             var sibling = methods[list.Key.Replace("ListAsync", "ListAutoPagingAsync", StringComparison.Ordinal)];

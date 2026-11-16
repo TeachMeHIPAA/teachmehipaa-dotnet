@@ -9,11 +9,11 @@ namespace TeachMeHipaa;
 /// <summary>The API's <c>TokenIntrospection</c> object.</summary>
 public sealed record TokenIntrospection : TeachMeHipaaEntity
 {
-    /// <summary><c>client</c> for an API client or partner app, <c>user</c> for a person.</summary>
+    /// <summary><c>client</c> for an API client, <c>user</c> for a person.</summary>
     [JsonPropertyName("actorType")]
     public TokenIntrospectionActorType ActorType { get; init; }
 
-    /// <summary>The API client or partner app the token belongs to.</summary>
+    /// <summary>The API client the token belongs to.</summary>
     [JsonPropertyName("clientId")]
     public string? ClientId { get; init; }
 

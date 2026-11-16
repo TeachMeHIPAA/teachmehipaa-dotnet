@@ -19,7 +19,6 @@ public sealed class ContractTests : IDisposable
     private const string CourseId = "hipaa-2026";
     private const string SubscriptionId = "whs_01JD8D";
     private const string OperationId = "op-01JD8H";
-    private const string PartnerId = "ptn_01JD8E2C3D4E5F6G7H8J9K0M1N";
     private const string TinyId = "cAbCdEfGhIjKl";
 
     private readonly ViolationRecorder _violations = new();
@@ -54,10 +53,15 @@ public sealed class ContractTests : IDisposable
     [Fact]
     public async Task TheHarnessCatchesARequestThatBreaksTheSpec()
     {
-        await Assert.ThrowsAsync<InvalidRequestException>(() => _client.SeatOrders.QuoteAsync(new SeatOrderQuoteOptions { Quantity = 0 }));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _client.WebhookSubscriptions.CreateAsync(new WebhookSubscriptionCreateOptions
+        {
+            EndpointUrl = "https://hr.example.com/hooks/tmh",
+            EventTypes = [EventType.SeatsLow],
+            SeatsLowThreshold = -1,
+        }));
 
         var violation = Assert.Single(_violations.Found);
-        Assert.Contains("quantity", violation, StringComparison.Ordinal);
+        Assert.Contains("seatsLowThreshold", violation, StringComparison.Ordinal);
         _violations.Clear();
     }
 
@@ -173,14 +177,6 @@ public sealed class ContractTests : IDisposable
     }
 
     [Fact]
-    public async Task QuotesASeatOrder()
-    {
-        var quote = await _client.SeatOrders.QuoteAsync(new SeatOrderQuoteOptions { Quantity = 10, Currency = "usd" });
-
-        Assert.Equal(HttpStatusCode.OK, quote.LastResponse!.StatusCode);
-    }
-
-    [Fact]
     public async Task CreatesAWebhookSubscriptionWithItsSigningSecret()
     {
         var subscription = await _client.WebhookSubscriptions.CreateAsync(new WebhookSubscriptionCreateOptions
@@ -225,13 +221,5 @@ public sealed class ContractTests : IDisposable
         var introspection = await _client.Auth.IntrospectAsync();
 
         Assert.Equal(HttpStatusCode.OK, introspection.LastResponse!.StatusCode);
-    }
-
-    [Fact]
-    public async Task ListsAPartnersOrganizations()
-    {
-        var page = await _client.Partners.Organizations.ListAsync(PartnerId, new PartnerOrganizationListOptions { Limit = 10 });
-
-        Assert.All(page.Items, organization => Assert.False(string.IsNullOrEmpty(organization.OrgId)));
     }
 }

@@ -65,17 +65,8 @@ public readonly record struct TokenIntrospectionScopesItem
     /// <summary><c>compliance:read</c>.</summary>
     public static TokenIntrospectionScopesItem ComplianceRead { get; } = new("compliance:read");
 
-    /// <summary><c>seats:purchase</c>.</summary>
-    public static TokenIntrospectionScopesItem SeatsPurchase { get; } = new("seats:purchase");
-
     /// <summary><c>webhooks:manage</c>.</summary>
     public static TokenIntrospectionScopesItem WebhooksManage { get; } = new("webhooks:manage");
-
-    /// <summary><c>partner:orgs:read</c>.</summary>
-    public static TokenIntrospectionScopesItem PartnerOrgsRead { get; } = new("partner:orgs:read");
-
-    /// <summary><c>partner:orgs:write</c>.</summary>
-    public static TokenIntrospectionScopesItem PartnerOrgsWrite { get; } = new("partner:orgs:write");
 
     /// <summary>The value as the API sends it.</summary>
     public string Value => _value ?? string.Empty;
