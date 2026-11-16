@@ -48,7 +48,7 @@ Set either `ClientId` and `ClientSecret`, or `TokenProvider`, not both;
 `Scopes` then belong to the token provider. With neither, the client makes
 only public calls (see [Authentication](authentication.md)). The base URLs
 are `https://api.tme.so/v1` for Live and
-`https://api-teachmehipaa-dev.web.app/v1` for the Sandbox. An invalid
+`https://sandbox.api.tme.so/v1` for the Sandbox. An invalid
 option throws `ArgumentException` naming it when you create the client.
 
 In ASP.NET Core, `AddTeachMeHipaa` builds the options from your services

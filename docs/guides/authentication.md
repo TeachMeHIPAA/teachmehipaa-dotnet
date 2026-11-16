@@ -72,7 +72,7 @@ Every credential belongs to one Environment, and works only there.
 | `Environment`                            | Base URL                                  | Use it for                                     |
 | ---------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
 | `TeachMeHipaaEnvironment.Live` (default) | `https://api.tme.so/v1`                   | Your real Organization and Learners            |
-| `TeachMeHipaaEnvironment.Sandbox`        | `https://api-teachmehipaa-dev.web.app/v1` | Building and testing; no real Learners emailed |
+| `TeachMeHipaaEnvironment.Sandbox`        | `https://sandbox.api.tme.so/v1` | Building and testing; no real Learners emailed |
 
 `Environment` defaults to `Live`, so set
 `Environment = TeachMeHipaaEnvironment.Sandbox` with Sandbox credentials.

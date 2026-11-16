@@ -36,8 +36,8 @@ public class ClientConfigurationTests
     {
         Assert.Equal(
             [
-                "https://api-teachmehipaa-dev.web.app/v1/auth/token",
-                $"https://api-teachmehipaa-dev.web.app/v1/organizations/{OrgId}/learners/{LearnerId}",
+                "https://sandbox.api.tme.so/v1/auth/token",
+                $"https://sandbox.api.tme.so/v1/organizations/{OrgId}/learners/{LearnerId}",
             ],
             await UrlsSentBy(new TeachMeHipaaClientOptions { Environment = TeachMeHipaaEnvironment.Sandbox }));
     }

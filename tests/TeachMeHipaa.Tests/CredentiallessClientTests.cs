@@ -42,7 +42,7 @@ public class CredentiallessClientTests
         Assert.Equal(CertificateVerificationStatus.Valid, verification.Status);
         Assert.Equal("hipaa-2026", Assert.Single(courses.Items).CourseId);
         Assert.Equal(
-            ["https://api-teachmehipaa-dev.web.app/v1/certificate-verifications/Ab3dE", "https://api-teachmehipaa-dev.web.app/v1/courses"],
+            ["https://sandbox.api.tme.so/v1/certificate-verifications/Ab3dE", "https://sandbox.api.tme.so/v1/courses"],
             handler.Requests.Select(request => request.Uri.AbsoluteUri));
         Assert.All(handler.Requests, request => Assert.Null(request.Header("Authorization")));
     }
