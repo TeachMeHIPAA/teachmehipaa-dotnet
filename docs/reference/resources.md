@@ -1,12 +1,15 @@
 <!-- Generated from openapi/sdk-ir.json by tools/Generator. Do not edit. -->
 
-# Resource reference
+# TeachMeHIPAA resource reference
 
-Every service and method of `TeachMeHipaaClient`, generated from the SDK IR of the Developer API document release `trimmed-2026-11-15`.
+Each service on `TeachMeHipaaClient` and each of its methods: the C# signature, the HTTP call, the Scopes the Access token needs and how the client retries the call. Generated from the SDK IR for Developer API document release `trimmed-2026-11-15`.
 
-Every method is async and ends with two optional parameters, left out of the signatures below: `RequestOptions? requestOptions = null`, for a request id, retries, a timeout or your own `Idempotency-Key` (see [Errors and retries](../guides/errors-and-retries.md)), and `CancellationToken cancellationToken = default`. Ids in the path come first, then the method's options object, whose unset properties are not sent. Models, options and enums are in the `TeachMeHipaa` namespace, and every object a method returns has a `LastResponse`.
+## Conventions
 
-Organization-scoped paths contain `{orgId}`, which the client fills in from its Organization binding.
+- Every method also takes two optional trailing parameters, which the signatures below leave out: `RequestOptions? requestOptions = null` sets a request id, a timeout, the retry count or your own `Idempotency-Key` (see [Handle errors and retries](../articles/handle-errors.md)), and `CancellationToken cancellationToken = default` cancels the call and its retries.
+- Path ids come first, then the options object. Options properties you leave unset aren't sent.
+- Models, options classes and enums live in the `TeachMeHipaa` namespace. Every object a method returns exposes the HTTP response as `LastResponse`.
+- A path that contains `{orgId}` is Organization-scoped. The client fills the id in from its Organization binding, so no method takes it.
 
 ## Services
 
@@ -26,7 +29,7 @@ Organization-scoped paths contain `{orgId}`, which the client fills in from its 
 
 ## AuditEvents
 
-`client.AuditEvents`: `AuditEventService`.
+Reach it as `client.AuditEvents`, an instance of `AuditEventService`.
 
 ### `AuditEvents.ListAsync`
 
@@ -43,10 +46,10 @@ Returns a list of the organization's audit events, newest first. Filter by `type
 
 - **Scopes:** `audit:read`
 - **Returns:** `Page<AuditEvent>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`AuditEventListOptions`:
+Options (`AuditEventListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -58,7 +61,7 @@ Returns a list of the organization's audit events, newest first. Filter by `type
 
 ## Auth
 
-`client.Auth`: `AuthService`.
+Reach it as `client.Auth`, an instance of `AuthService`.
 
 ### `Auth.IntrospectAsync`
 
@@ -74,11 +77,11 @@ Describes the access token you call with: whether it belongs to an API client or
 
 - **Scopes:** any Access token
 - **Returns:** `TokenIntrospection`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ## CertificateVerifications
 
-`client.CertificateVerifications`: `CertificateVerificationService`.
+Reach it as `client.CertificateVerifications`, an instance of `CertificateVerificationService`.
 
 ### `CertificateVerifications.GetAsync`
 
@@ -92,13 +95,13 @@ Verify a certificate.
 
 Verifies the certificate behind a `https://tme.so/{tinyId}` link. Needs no access token. Limited to 60 requests a minute per IP address.
 
-- **Scopes:** none: a public method, sent without an Access token
+- **Scopes:** none; the method is public and sends no Access token
 - **Returns:** `CertificateVerification`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ## Certificates
 
-`client.Certificates`: `CertificateService`.
+Reach it as `client.Certificates`, an instance of `CertificateService`.
 
 ### `Certificates.DownloadPdfAsync`
 
@@ -115,8 +118,8 @@ Downloads the certificate as a PDF. Revoked and expired certificates are waterma
 
 - **Scopes:** `certificates:read`
 - **Returns:** `BinaryResponse`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `DownloadPdfStreamingAsync` returns once the headers arrive, to read the file as it comes.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Streaming:** `DownloadPdfStreamingAsync` returns once the headers arrive, so you read the file as it downloads.
 
 ### `Certificates.ExportAsync`
 
@@ -132,11 +135,11 @@ Exports the organization's certificate records as CSV. Requires the `certificate
 
 - **Scopes:** `certificates:read`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`CertificateExportOptions`:
+Options (`CertificateExportOptions`):
 
 - `Format` (`CertificatesExportRequestFormat`, required): The file format. Only `csv` today.
 
@@ -154,7 +157,7 @@ Retrieves a certificate.
 
 - **Scopes:** `certificates:read`
 - **Returns:** `Certificate`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ### `Certificates.ListAsync`
 
@@ -171,10 +174,10 @@ Returns a list of the organization's certificates. Pass `subjectId` to list one 
 
 - **Scopes:** `certificates:read`
 - **Returns:** `Page<Certificate>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`CertificateListOptions`:
+Options (`CertificateListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -194,11 +197,11 @@ Retrieves the certificate's LinkedIn add-to-profile link and its public `tme.so`
 
 - **Scopes:** `certificates:read`
 - **Returns:** `CertificateLinks`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ## Compliance
 
-`client.Compliance`: `ComplianceService`.
+Reach it as `client.Compliance`, an instance of `ComplianceService`.
 
 ### `Compliance.GetAsync`
 
@@ -214,15 +217,15 @@ Counts the organization's learners in one course by status. Removed learners are
 
 - **Scopes:** `compliance:read`
 - **Returns:** `ComplianceSummary`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`ComplianceGetOptions`:
+Options (`ComplianceGetOptions`):
 
 - `CourseId` (`string?`): The course. Defaults to the organization's default course.
 
 ## Courses
 
-`client.Courses`: `CourseService`.
+Reach it as `client.Courses`, an instance of `CourseService`.
 
 ### `Courses.GetAsync`
 
@@ -237,10 +240,10 @@ Retrieve a course.
 
 Retrieves a course from the public catalog.
 
-- **Scopes:** none: a public method, sent without an Access token
+- **Scopes:** none; the method is public and sends no Access token
 - **Returns:** `Course`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `GetIfModifiedAsync` sends `If-None-Match` and returns a `ConditionalResult` with no `Value` when your copy is current.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Conditional read:** `GetIfModifiedAsync` sends `If-None-Match`. Its `ConditionalResult` has a `null` `Value` when your copy is current.
 
 ### `Courses.ListAsync`
 
@@ -255,19 +258,19 @@ List all courses.
 
 Returns a list of the courses in the public catalog. Needs no access token.
 
-- **Scopes:** none: a public method, sent without an Access token
+- **Scopes:** none; the method is public and sends no Access token
 - **Returns:** `Page<Course>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`CourseListOptions`:
+Options (`CourseListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
 
 ## Enrollments
 
-`client.Enrollments`: `EnrollmentService`.
+Reach it as `client.Enrollments`, an instance of `EnrollmentService`.
 
 ### `Enrollments.BatchAsync`
 
@@ -283,10 +286,10 @@ Reminds, resends, cancels, renews, archives or unarchives up to 500 enrollments 
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `EnrollmentsBatchResults`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`EnrollmentBatchOptions`:
+Options (`EnrollmentBatchOptions`):
 
 - `Operation` (`EnrollmentsBatchRequestOperation`, required): What to do to each enrollment: `remind`, `resendInvite`, `cancel`, `recertify`, `archive` or `unarchive`.
 - `Select` (`EnrollmentsBatchRequestSelectEnrollmentIds`, required): The enrollments to act on: a list of `enrollmentIds` (up to 500), or a `filter`.
@@ -305,11 +308,11 @@ Reminds, resends, cancels, renews, archives or unarchives up to 500 enrollments 
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`EnrollmentBatchByFilterOptions`:
+Options (`EnrollmentBatchByFilterOptions`):
 
 - `Operation` (`EnrollmentsBatchRequestOperation`, required): What to do to each enrollment: `remind`, `resendInvite`, `cancel`, `recertify`, `archive` or `unarchive`.
 - `Select` (`EnrollmentsBatchRequestSelectFilter`, required): The enrollments to act on: a list of `enrollmentIds` (up to 500), or a `filter`.
@@ -330,10 +333,10 @@ Cancels an invite that hasn't been accepted yet and returns its seat to the pool
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `CancelEnrollmentResponse`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`EnrollmentCancelOptions`:
+Options (`EnrollmentCancelOptions`):
 
 - `Refund` (`bool?`): Refund the seat to the card that paid for it instead of returning it to the pool. Defaults to `false`.
 
@@ -351,10 +354,10 @@ Invites a person to a course, creating their profile if needed, and uses one sea
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `Enrollment`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`EnrollmentCreateOptions`:
+Options (`EnrollmentCreateOptions`):
 
 - `Email` (`string`, required): The learner's email address.
 - `Name` (`string?`): The learner's full name.
@@ -374,11 +377,11 @@ Exports the organization's enrollments as CSV. Requires the `enrollments:read` s
 
 - **Scopes:** `enrollments:read`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`EnrollmentExportOptions`:
+Options (`EnrollmentExportOptions`):
 
 - `Format` (`EnrollmentsExportRequestFormat`, required): The file format. Only `csv` today.
 
@@ -397,8 +400,8 @@ Retrieves an enrollment. Requires the `enrollments:read` scope.
 
 - **Scopes:** `enrollments:read`
 - **Returns:** `Enrollment`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `GetIfModifiedAsync` sends `If-None-Match` and returns a `ConditionalResult` with no `Value` when your copy is current.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Conditional read:** `GetIfModifiedAsync` sends `If-None-Match`. Its `ConditionalResult` has a `null` `Value` when your copy is current.
 
 ### `Enrollments.ImportAsync`
 
@@ -414,12 +417,12 @@ Invites everyone in a CSV file with an `email` column (and optional `name` and `
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Takes the file as a `FileUpload` in the options' constructor: a path, a `byte[]` or a `Stream`.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **File:** pass it to the options constructor as a `FileUpload`, from a path, a `byte[]` or a `Stream`.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`EnrollmentImportOptions`:
+Options (`EnrollmentImportOptions`):
 
 - `File` (`FileUpload`, constructor argument): UTF-8 CSV (RFC 4180: quoted fields, `""` escapes, CRLF/LF). Header row required.
 - `Options` (`ImportOptions?`)
@@ -439,10 +442,10 @@ Returns a list of the organization's enrollments. Filter by `status`, `courseId`
 
 - **Scopes:** `enrollments:read`
 - **Returns:** `Page<OrgEnrollmentListItem>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`EnrollmentListOptions`:
+Options (`EnrollmentListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 1000. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -465,11 +468,11 @@ Invites everyone in a CSV file with an `email` column (and optional `name` and `
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `ImportPreview`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Takes the file as a `FileUpload` in the options' constructor: a path, a `byte[]` or a `Stream`.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **File:** pass it to the options constructor as a `FileUpload`, from a path, a `byte[]` or a `Stream`.
 
-`EnrollmentPreviewImportOptions`:
+Options (`EnrollmentPreviewImportOptions`):
 
 - `File` (`FileUpload`, constructor argument): UTF-8 CSV (RFC 4180: quoted fields, `""` escapes, CRLF/LF). Header row required.
 - `Options` (`ImportOptions?`)
@@ -488,8 +491,8 @@ Emails the learner again: the invitation if they haven't joined, or a reminder l
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `EnrollmentActionAccepted`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ### `Enrollments.RenewAsync`
 
@@ -505,8 +508,8 @@ Starts the next certification cycle for a certified learner and invites them aga
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `Enrollment`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ### `Enrollments.ResendInviteAsync`
 
@@ -522,14 +525,14 @@ Sends a pending invite again, within the same cycle. To invite a certified learn
 
 - **Scopes:** `enrollments:write`
 - **Returns:** `EnrollmentActionAccepted`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ## Events
 
-`client.Events`: `EventService`.
+Reach it as `client.Events`, an instance of `EventService`.
 
-`client.Events.TailAsync(...)` is hand-written: it reads the Event log from a saved position, once or following new Events. See [Pagination and Events](../guides/pagination-and-events.md#tailing-the-event-log).
+The service also has a hand-written `client.Events.TailAsync(EventTailOptions, CancellationToken)`, which reads the Event log from a saved position and can keep polling for new Events. See [Read and follow the Event log](../articles/event-log.md#follow-the-log-from-a-background-service).
 
 ### `Events.ListAsync`
 
@@ -546,10 +549,10 @@ Returns a list of the organization's events from the last 30 days, oldest first.
 
 - **Scopes:** `webhooks:manage` or `audit:read`
 - **Returns:** `Page<Event>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`EventListOptions`:
+Options (`EventListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `After` (`string?`): Return events after this event id (exclusive). The previous page's `nextCursor`.
@@ -557,7 +560,7 @@ Returns a list of the organization's events from the last 30 days, oldest first.
 
 ## Learners
 
-`client.Learners`: `LearnerService`.
+Reach it as `client.Learners`, an instance of `LearnerService`.
 
 ### `Learners.BatchUpsertAsync`
 
@@ -573,11 +576,11 @@ Creates or retrieves up to 500 learners in one request. Each item works like cre
 
 - **Scopes:** `learners:write`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`LearnerBatchUpsertOptions`:
+Options (`LearnerBatchUpsertOptions`):
 
 - `Items` (`IReadOnlyList<LearnerBatchUpsertRequestItemsItem>`, required): Up to 500 learners, each with the same fields as creating one learner.
 - `Delivery` (`LearnerBatchUpsertRequestDelivery?`): Applies to every item. `email` (default) sends invites; `none` sends nothing.
@@ -597,11 +600,11 @@ Adds a person to the organization and invites them to a course in one call, usin
 
 - **Scopes:** `learners:write`
 - **Returns:** `LearnerWriteResult`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `Created` says whether this call created it.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Created:** `Created` on the result is `true` when this call created the record.
 
-`LearnerCreateOptions`:
+Options (`LearnerCreateOptions`):
 
 - `Email` (`string`, required): The learner's email address.
 - `Name` (`string?`): The learner's full name.
@@ -626,9 +629,9 @@ Creates a link that opens the course with the learner already signed in, for a "
 
 - **Scopes:** `learners:write`
 - **Returns:** `LearnerLaunchLink`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`LearnerCreateLaunchLinkOptions`:
+Options (`LearnerCreateLaunchLinkOptions`):
 
 - `CourseId` (`string?`): The course. Defaults to the organization's default course.
 
@@ -646,11 +649,11 @@ Exports the organization's learners in one course as CSV, optionally only those 
 
 - **Scopes:** `learners:read`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
-`LearnerExportOptions`:
+Options (`LearnerExportOptions`):
 
 - `Format` (`LearnersExportRequestFormat`, required): The file format. Only `csv` today.
 - `CourseId` (`string?`): The course to export. Defaults to the organization's default course.
@@ -670,9 +673,9 @@ Retrieves a learner's status in one course.
 
 - **Scopes:** `learners:read`
 - **Returns:** `Learner`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`LearnerGetOptions`:
+Options (`LearnerGetOptions`):
 
 - `CourseId` (`string?`): The course. Defaults to the organization's default course.
 
@@ -691,10 +694,10 @@ Returns a list of the organization's learners in one course, with each learner's
 
 - **Scopes:** `learners:read`
 - **Returns:** `Page<Learner>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`LearnerListOptions`:
+Options (`LearnerListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -717,11 +720,11 @@ Removes a learner from the organization. A learner who hasn't started has their 
 
 - **Scopes:** `learners:write`
 - **Returns:** `Learner`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Takes `IfMatch` (an ETag string or the object you read), sent as `If-Match`, to refuse the call if the object changed.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Concurrency:** set `IfMatch` (the ETag string, or the object you read) to send `If-Match`, so the call fails if the object changed.
 
-`LearnerOffboardOptions`:
+Options (`LearnerOffboardOptions`):
 
 - `IfMatch` (`ETag`, optional): The ETag you read the object with, or the object itself.
 - `CourseId` (`string?`): The course. Defaults to the organization's default course.
@@ -740,10 +743,10 @@ Emails the learner a reminder: the invite again if they haven't started, or a nu
 
 - **Scopes:** `learners:write`
 - **Returns:** `LearnerRemindAccepted`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`LearnerRemindOptions`:
+Options (`LearnerRemindOptions`):
 
 - `CourseId` (`string?`): The course. Defaults to the organization's default course.
 
@@ -761,11 +764,11 @@ Updates a learner's `name` or `externalId`; parameters you don't send are left u
 
 - **Scopes:** `learners:write`
 - **Returns:** `Learner`
-- Never retried: it is not safe to replay.
-- Requires an `ETag` in the options' constructor (the ETag string or the object you read), sent as `If-Match`; a stale one throws `PreconditionFailedException`.
-- A JSON merge patch: `Optional<T>` properties left unset are not sent, and set to `null` they clear the field.
+- **Retries:** none, because replaying the call isn't safe.
+- **Concurrency:** the options constructor takes an `ETag` (the ETag string, or the object you read) and sends it as `If-Match`. A stale ETag throws `PreconditionFailedException`.
+- **Body:** a JSON merge patch. Unset `Optional<T>` properties aren't sent, and a property set to `null` clears the field.
 
-`LearnerUpdateOptions`:
+Options (`LearnerUpdateOptions`):
 
 - `IfMatch` (`ETag`, constructor argument, required): The ETag you read the object with, or the object itself.
 - `Name` (`Optional<string>`): The learner's full name.
@@ -788,11 +791,11 @@ Makes sure a learner exists for your own id. Creates and invites the learner the
 
 - **Scopes:** `learners:write`
 - **Returns:** `LearnerWriteResult`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `Created` says whether this call created it.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Created:** `Created` on the result is `true` when this call created the record.
 
-`LearnerUpsertByExternalIdOptions`:
+Options (`LearnerUpsertByExternalIdOptions`):
 
 - `Email` (`string`, required): The learner's email address.
 - `Name` (`string?`): The learner's full name.
@@ -802,7 +805,7 @@ Makes sure a learner exists for your own id. Creates and invites the learner the
 
 ## Members
 
-`client.Members`: `MemberService`.
+Reach it as `client.Members`, an instance of `MemberService`.
 
 ### `Members.GetAsync`
 
@@ -818,7 +821,7 @@ Retrieves a member of the organization.
 
 - **Scopes:** `members:read`
 - **Returns:** `Member`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ### `Members.ListAsync`
 
@@ -835,10 +838,10 @@ Returns a list of the organization's members, its admins and learners. Pass `rol
 
 - **Scopes:** `members:read`
 - **Returns:** `Page<MemberListItem>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`MemberListOptions`:
+Options (`MemberListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 1000. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -847,7 +850,7 @@ Returns a list of the organization's members, its admins and learners. Pass `rol
 
 ## Operations
 
-`client.Operations`: `OperationService`.
+Reach it as `client.Operations`, an instance of `OperationService`.
 
 ### `Operations.GetAsync`
 
@@ -863,12 +866,12 @@ Retrieves a bulk operation and its result. Operations are kept for 24 hours.
 
 - **Scopes:** any Access token
 - **Returns:** `Operation`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
 ## Seats
 
-`client.Seats`: `SeatService`.
+Reach it as `client.Seats`, an instance of `SeatService`.
 
 ### `Seats.GetAsync`
 
@@ -884,11 +887,11 @@ Retrieves how many seats the organization has, how many are assigned and how man
 
 - **Scopes:** `enrollments:read`
 - **Returns:** `SeatsInventory`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
 ## WebhookSubscriptions
 
-`client.WebhookSubscriptions`: `WebhookSubscriptionService`.
+Reach it as `client.WebhookSubscriptions`, an instance of `WebhookSubscriptionService`.
 
 ### `WebhookSubscriptions.CreateAsync`
 
@@ -904,10 +907,10 @@ Subscribes an HTTPS endpoint to event types and creates its signing secret. Requ
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `WebhookSubscriptionCreated`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
 
-`WebhookSubscriptionCreateOptions`:
+Options (`WebhookSubscriptionCreateOptions`):
 
 - `EndpointUrl` (`string`, required): The HTTPS URL to deliver events to.
 - `EventTypes` (`IReadOnlyList<EventType>`, required): The event types to deliver.
@@ -928,7 +931,7 @@ Deletes a webhook subscription and its signing secret. Requires the `webhooks:ma
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `TeachMeHipaaResponse`
-- Never retried: it is not safe to replay.
+- **Retries:** none, because replaying the call isn't safe.
 
 ### `WebhookSubscriptions.GetAsync`
 
@@ -947,8 +950,8 @@ Retrieves a webhook subscription. Requires the `webhooks:manage` or `org:admin` 
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `WebhookSubscription`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `GetIfModifiedAsync` sends `If-None-Match` and returns a `ConditionalResult` with no `Value` when your copy is current.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Conditional read:** `GetIfModifiedAsync` sends `If-None-Match`. Its `ConditionalResult` has a `null` `Value` when your copy is current.
 
 ### `WebhookSubscriptions.ListAsync`
 
@@ -966,10 +969,10 @@ Returns a list of the organization's webhook subscriptions. Signing secrets are 
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `Page<WebhookSubscription>`
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- `await foreach` over the page, or `ListAutoPagingAsync`, yields every item across pages.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Paging:** `await foreach` over the returned page, or over `ListAutoPagingAsync`, reads every item across pages.
 
-`WebhookSubscriptionListOptions`:
+Options (`WebhookSubscriptionListOptions`):
 
 - `Limit` (`long?`): How many objects to return, between 1 and 100. Defaults to 20.
 - `Cursor` (`string?`): The `nextCursor` from the previous page.
@@ -988,9 +991,9 @@ Delivers the subscription's failed events again. Requires the `webhooks:manage` 
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
 ### `WebhookSubscriptions.TestAsync`
 
@@ -1006,9 +1009,9 @@ Sends a signed test delivery to the subscription's endpoint, so you can check yo
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `Operation`
-- Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.
-- Retried on network errors, 409 `conflict`, 429 and 5xx.
-- Returns an `Operation`: `WaitAsync` polls until it is done.
+- **Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.
+- **Retries:** on network errors, 409 `conflict`, 429 and 5xx.
+- **Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.
 
 ### `WebhookSubscriptions.UpdateAsync`
 
@@ -1026,11 +1029,11 @@ Updates a webhook subscription; parameters you don't send are left unchanged. Se
 
 - **Scopes:** `org:admin` or `webhooks:manage`
 - **Returns:** `WebhookSubscription`
-- Never retried: it is not safe to replay.
-- Requires an `ETag` in the options' constructor (the ETag string or the object you read), sent as `If-Match`; a stale one throws `PreconditionFailedException`.
-- A JSON merge patch: `Optional<T>` properties left unset are not sent, and set to `null` they clear the field.
+- **Retries:** none, because replaying the call isn't safe.
+- **Concurrency:** the options constructor takes an `ETag` (the ETag string, or the object you read) and sends it as `If-Match`. A stale ETag throws `PreconditionFailedException`.
+- **Body:** a JSON merge patch. Unset `Optional<T>` properties aren't sent, and a property set to `null` clears the field.
 
-`WebhookSubscriptionUpdateOptions`:
+Options (`WebhookSubscriptionUpdateOptions`):
 
 - `IfMatch` (`ETag`, constructor argument, required): The ETag you read the object with, or the object itself.
 - `EndpointUrl` (`Optional<string>`): The HTTPS URL to deliver events to.
@@ -1041,7 +1044,7 @@ Updates a webhook subscription; parameters you don't send are left unchanged. Se
 
 ## Event types
 
-Events from `Events.ListAsync`, `Events.TailAsync` and `WebhookUtility.ConstructEvent` are `Event` subclasses: match on these. An Event type this version doesn't know arrives as `UnknownEvent`.
+`Events.ListAsync`, `Events.TailAsync` and `WebhookUtility.ConstructEvent` return subclasses of `Event`, one per Event type. Match on the class with a type pattern. An Event type this version of the library doesn't know arrives as `UnknownEvent`.
 
 | Event type | Class | `Data` |
 | --- | --- | --- |

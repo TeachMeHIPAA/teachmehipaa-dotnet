@@ -1,4 +1,8 @@
 - name: Overview
   href: index.md
+- name: Guides
+  href: ../articles/
+- name: Resource reference
+  href: ../reference/resources.md
 - name: API reference
   href: api/

@@ -1,16 +1,22 @@
-# Testing
+---
+title: Unit test code that uses the TeachMeHIPAA client
+description: Test against a fake HttpMessageHandler, control time with FakeTimeProvider, sign webhook Deliveries yourself and keep Sandbox tests out of the default run.
+ms.topic: how-to
+ms.date: 11/16/2026
+---
 
-Test your integration in three layers: unit tests against a fake
-transport that never leave your process, webhook handler tests with
-Deliveries you sign yourself, and end-to-end runs against the Sandbox.
+# Unit test code that uses the TeachMeHIPAA client
 
-## Unit tests with a fake transport
+`TeachMeHipaaClient` is a sealed class with no interface, by design: you
+test through its transport. Point it at a fake `HttpMessageHandler` and
+your tests exercise the real client, from serialization to exception
+mapping, without leaving the process.
 
-The client sends every request through an `HttpMessageHandler`, so a test
-can set `HttpMessageHandler` to one that answers from your own code. Give
-the client a `StaticTokenProvider` and an `OrganizationId` so it makes no
-token or Organization lookup requests, and `MaxRetries = 0` so a failure
-shows up at once:
+## Test with a fake transport
+
+Give the client a `StaticTokenProvider` and an `OrganizationId` so it
+skips the token and Organization requests, and set `MaxRetries = 0` so a
+failure surfaces on the first attempt:
 
 <!-- sample: fake-transport -->
 ```csharp
@@ -48,25 +54,52 @@ public sealed class FakeTeachMeHipaa : HttpMessageHandler
 }
 ```
 
-Responses use the API's JSON field names (camelCase), as in the
-[OpenAPI document](../../openapi/openapi.developer.json); the models turn
-them into PascalCase properties. Errors are Problem Details with a `code`,
-so the 404 above throws `NotFoundException` with `Code` `not_found`. The
-client never disposes a handler or `HttpClient` you give it.
+Fake responses use the API's camelCase JSON field names, as in the
+[OpenAPI document](https://github.com/TeachMeHIPAA/teachmehipaa-dotnet/blob/main/openapi/openapi.developer.json);
+the models map them to PascalCase properties. Errors are Problem Details
+with a `code`, so the 404 branch above makes the client throw
+`NotFoundException` with `Code` set to `not_found`. The client never
+disposes a handler or `HttpClient` that you supply.
 
-To test token expiry, retries and `WaitAsync` without waiting, set
-`TimeProvider` to a `FakeTimeProvider` from
-`Microsoft.Extensions.TimeProvider.Testing` and advance it in the test;
-see [Configuration](configuration.md).
+## Control time in tests
 
-## Test your webhook handler
+Token expiry, retry backoff and `WaitAsync` polling all read the client's
+`TimeProvider`. Set it to a `FakeTimeProvider` from the
+`Microsoft.Extensions.TimeProvider.Testing` package and advance the clock
+in the test, so those paths run without real delays.
 
-`WebhookUtility.GenerateTestHeaders` signs a body the way TeachMeHIPAA
-signs a Delivery, so a test can post a Delivery to your endpoint in memory
-with ASP.NET Core's `TestServer` (from `Microsoft.AspNetCore.TestHost`, or
-`WebApplicationFactory` for your whole app). Map the endpoint in an
-extension method so the app and the test share it, use a test Signing
-secret, and sign for the path the test posts to:
+## Sign a Delivery yourself
+
+`WebhookUtility.GenerateTestHeaders` signs a payload the way TeachMeHIPAA
+signs a Delivery. Pass it the body, a test Signing secret and the path,
+and send the headers it returns with the body:
+
+<!-- sample: delivery-test-headers -->
+```csharp
+const string payload = """
+    {"eventId":"evt_01JD8M","eventType":"learner.certified","orgId":"org_acme",
+     "occurredAt":"2026-11-15T12:00:00.000Z",
+     "data":{"learnerId":"sub_01JD80AB2C3D4E5F6G7H8J9K0M","email":"ana@example.com","externalId":"hr-123",
+             "courseId":"hipaa-2026","status":"certified","occurredAt":"2026-11-15T12:00:00.000Z"}}
+    """;
+var headers = WebhookUtility.GenerateTestHeaders(payload, "test-signing-secret", "/webhooks/tmh");
+
+var delivery = WebhookUtility.ConstructEvent(payload, headers, "test-signing-secret", "/webhooks/tmh");
+if (delivery.Event is EventLearnerCertified certified)
+{
+    Console.WriteLine(certified.EventType);
+}
+```
+
+`GenerateTestHeaders` signs with the current time unless you pass a
+`timestamp`, which lets a test cover the 5-minute tolerance.
+
+## Test a webhook endpoint
+
+Post signed Deliveries to your endpoint in memory with ASP.NET Core's
+`TestServer`, from the `Microsoft.AspNetCore.TestHost` package, or with
+`WebApplicationFactory` for the whole app. Map the endpoint in an
+extension method so the app and the test share it:
 
 <!-- sample: webhook-handler-test -->
 ```csharp
@@ -151,27 +184,26 @@ public sealed class TmhWebhookEndpointTests
 }
 ```
 
-`GenerateTestHeaders` signs with the current time unless you pass a
-`timestamp`. [Webhooks](webhooks.md) has a controller version of the
-endpoint.
+## Run end-to-end tests against the Sandbox
 
-## End-to-end tests in the Sandbox
+The Sandbox runs the real API on separate data with separate credentials,
+so tests can create Learners and Enrollments there. Point a client at it
+with `Environment = TeachMeHipaaEnvironment.Sandbox` and Sandbox
+credentials. To check a deployed webhook endpoint, call
+`WebhookSubscriptions.TestAsync`; see
+[Send a Test delivery](receive-webhooks.md#send-a-test-delivery).
 
-The Sandbox runs the real API against separate data and separate
-credentials, and only emails allowlisted addresses, so you can create
-Learners and Enrollments there freely. Point a client at it with
-`Environment = TeachMeHipaaEnvironment.Sandbox` and Sandbox credentials. To
-check a webhook endpoint you've deployed, run
-`WebhookSubscriptions.TestAsync` against it (see
-[Test deliveries](webhooks.md#test-deliveries)).
-
-Keep Sandbox tests out of your default test run, since they need
-credentials and the network. With xUnit, put them in their own test
-project, or tag them with a trait and filter it out:
+Sandbox tests need credentials and the network, so keep them out of the
+default run. With xUnit, tag each one with
+`[Trait("Category", "Sandbox")]` and filter on the trait:
 
 ```sh
 dotnet test --filter "Category!=Sandbox"
 TMH_CLIENT_ID=cli_... TMH_CLIENT_SECRET=tmh_cs_... dotnet test --filter "Category=Sandbox"
 ```
 
-where each Sandbox test carries `[Trait("Category", "Sandbox")]`.
+## Next steps
+
+- [Configure the client](configure.md): `HttpMessageHandler`,
+  `HttpClient` and `TimeProvider`.
+- [Receive webhooks in ASP.NET Core](receive-webhooks.md)

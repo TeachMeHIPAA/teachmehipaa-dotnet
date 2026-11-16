@@ -23,9 +23,9 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
     internal static readonly Dictionary<string, string> ExtensionDocs = new(StringComparer.Ordinal)
     {
         ["EventService"] =
-            "`client.Events.TailAsync(...)` is hand-written: it reads the Event log from a saved position, " +
-            "once or following new Events. See " +
-            "[Pagination and Events](../guides/pagination-and-events.md#tailing-the-event-log).",
+            "The service also has a hand-written `client.Events.TailAsync(EventTailOptions, CancellationToken)`, " +
+            "which reads the Event log from a saved position and can keep polling for new Events. See " +
+            "[Read and follow the Event log](../articles/event-log.md#follow-the-log-from-a-background-service).",
     };
 
     private readonly ModelWriter _types = new(model);
@@ -42,19 +42,23 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
         {
             Banner,
             "",
-            "# Resource reference",
+            "# TeachMeHIPAA resource reference",
             "",
-            "Every service and method of `TeachMeHipaaClient`, generated from the SDK IR of the Developer API " +
-            $"document release `{ir.Source.Release}`.",
+            "Each service on `TeachMeHipaaClient` and each of its methods: the C# signature, the HTTP call, " +
+            "the Scopes the Access token needs and how the client retries the call. Generated from the SDK IR " +
+            $"for Developer API document release `{ir.Source.Release}`.",
             "",
-            "Every method is async and ends with two optional parameters, left out of the signatures below: " +
-            "`RequestOptions? requestOptions = null`, for a request id, retries, a timeout or your own " +
-            "`Idempotency-Key` (see [Errors and retries](../guides/errors-and-retries.md)), and " +
-            "`CancellationToken cancellationToken = default`. Ids in the path come first, then the method's " +
-            "options object, whose unset properties are not sent. Models, options and enums are in the " +
-            "`TeachMeHipaa` namespace, and every object a method returns has a `LastResponse`.",
+            "## Conventions",
             "",
-            "Organization-scoped paths contain `{orgId}`, which the client fills in from its Organization binding.",
+            "- Every method also takes two optional trailing parameters, which the signatures below leave out: " +
+            "`RequestOptions? requestOptions = null` sets a request id, a timeout, the retry count or your own " +
+            "`Idempotency-Key` (see [Handle errors and retries](../articles/handle-errors.md)), and " +
+            "`CancellationToken cancellationToken = default` cancels the call and its retries.",
+            "- Path ids come first, then the options object. Options properties you leave unset aren't sent.",
+            "- Models, options classes and enums live in the `TeachMeHipaa` namespace. Every object a method " +
+            "returns exposes the HTTP response as `LastResponse`.",
+            "- A path that contains `{orgId}` is Organization-scoped. The client fills the id in from its " +
+            "Organization binding, so no method takes it.",
             "",
             "## Services",
             "",
@@ -70,7 +74,7 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
         foreach (var node in nodes)
         {
             var dotted = Dotted(node);
-            lines.AddRange(["", $"## {dotted}", "", $"`client.{dotted}`: `{node.ClassName}`."]);
+            lines.AddRange(["", $"## {dotted}", "", $"Reach it as `client.{dotted}`, an instance of `{node.ClassName}`."]);
             if (ExtensionDocs.TryGetValue(node.ClassName, out var extension))
             {
                 lines.AddRange(["", extension]);
@@ -139,7 +143,7 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
         lines.AddRange(Notes(plan, stem).Select(note => "- " + note));
         if (plan.OptionsClass is not null)
         {
-            lines.AddRange(["", $"`{plan.OptionsClass}`:", ""]);
+            lines.AddRange(["", $"Options (`{plan.OptionsClass}`):", ""]);
             lines.AddRange(Options(plan));
         }
 
@@ -174,7 +178,7 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
     {
         if (method.Security.Kind == IrSecurityKind.None)
         {
-            return "none: a public method, sent without an Access token";
+            return "none; the method is public and sends no Access token";
         }
 
         var alternatives = (method.Security.AnyOf ?? []).Where(scopes => scopes.Count > 0).ToList();
@@ -189,40 +193,40 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
         var notes = new List<string>();
         notes.Add(method.IdempotencyKey switch
         {
-            IrRequirement.Required => "Sends a generated `Idempotency-Key`, reused by its retries; set `RequestOptions.IdempotencyKey` to send your own.",
-            IrRequirement.Optional => "Sends an `Idempotency-Key` only when you set `RequestOptions.IdempotencyKey`.",
+            IrRequirement.Required => "**Idempotency:** sends a generated `Idempotency-Key` that every retry reuses. Set `RequestOptions.IdempotencyKey` to choose the key yourself.",
+            IrRequirement.Optional => "**Idempotency:** sends an `Idempotency-Key` only when you set `RequestOptions.IdempotencyKey`.",
             _ => "",
         });
         notes.Add(method.RetrySafe
-            ? "Retried on network errors, 409 `conflict`, 429 and 5xx."
-            : "Never retried: it is not safe to replay.");
+            ? "**Retries:** on network errors, 409 `conflict`, 429 and 5xx."
+            : "**Retries:** none, because replaying the call isn't safe.");
         notes.Add(plan.IfMatch switch
         {
-            IrRequirement.Required => "Requires an `ETag` in the options' constructor (the ETag string or the object you read), sent as `If-Match`; a stale one throws `PreconditionFailedException`.",
-            IrRequirement.Optional => "Takes `IfMatch` (an ETag string or the object you read), sent as `If-Match`, to refuse the call if the object changed.",
+            IrRequirement.Required => "**Concurrency:** the options constructor takes an `ETag` (the ETag string, or the object you read) and sends it as `If-Match`. A stale ETag throws `PreconditionFailedException`.",
+            IrRequirement.Optional => "**Concurrency:** set `IfMatch` (the ETag string, or the object you read) to send `If-Match`, so the call fails if the object changed.",
             _ => "",
         });
         if (plan.IfNoneMatch)
         {
-            notes.Add($"`{stem}IfModifiedAsync` sends `If-None-Match` and returns a `ConditionalResult` with no `Value` when your copy is current.");
+            notes.Add($"**Conditional read:** `{stem}IfModifiedAsync` sends `If-None-Match`. Its `ConditionalResult` has a `null` `Value` when your copy is current.");
         }
 
         if (plan.ContentType == "application/merge-patch+json")
         {
-            notes.Add("A JSON merge patch: `Optional<T>` properties left unset are not sent, and set to `null` they clear the field.");
+            notes.Add("**Body:** a JSON merge patch. Unset `Optional<T>` properties aren't sent, and a property set to `null` clears the field.");
         }
 
         if (plan.Fields.Any(field => field.Kind == FieldKind.File))
         {
-            notes.Add("Takes the file as a `FileUpload` in the options' constructor: a path, a `byte[]` or a `Stream`.");
+            notes.Add("**File:** pass it to the options constructor as a `FileUpload`, from a path, a `byte[]` or a `Stream`.");
         }
 
         notes.Add(method.Response.Kind switch
         {
-            IrResponseKind.Page => $"`await foreach` over the page, or `{stem}AutoPagingAsync`, yields every item across pages.",
-            IrResponseKind.Operation => "Returns an `Operation`: `WaitAsync` polls until it is done.",
-            IrResponseKind.Binary => $"`{stem}StreamingAsync` returns once the headers arrive, to read the file as it comes.",
-            IrResponseKind.WriteResult => "`Created` says whether this call created it.",
+            IrResponseKind.Page => $"**Paging:** `await foreach` over the returned page, or over `{stem}AutoPagingAsync`, reads every item across pages.",
+            IrResponseKind.Operation => "**Long-running:** returns an `Operation`. Call `WaitAsync` to poll until it finishes.",
+            IrResponseKind.Binary => $"**Streaming:** `{stem}StreamingAsync` returns once the headers arrive, so you read the file as it downloads.",
+            IrResponseKind.WriteResult => "**Created:** `Created` on the result is `true` when this call created the record.",
             _ => "",
         });
         return [.. notes.Where(note => note.Length > 0)];
@@ -259,9 +263,9 @@ internal sealed partial class ReferenceWriter(IrDocument ir, TypeModel model, Se
         {
             "## Event types",
             "",
-            "Events from `Events.ListAsync`, `Events.TailAsync` and `WebhookUtility.ConstructEvent` are " +
-            $"`{envelope.Name}` subclasses: match on these. An Event type this version doesn't know arrives as " +
-            $"`{ir.Events.UnknownEvent}`.",
+            "`Events.ListAsync`, `Events.TailAsync` and `WebhookUtility.ConstructEvent` return subclasses of " +
+            $"`{envelope.Name}`, one per Event type. Match on the class with a type pattern. An Event type this " +
+            $"version of the library doesn't know arrives as `{ir.Events.UnknownEvent}`.",
             "",
             "| Event type | Class | `Data` |",
             "| --- | --- | --- |",

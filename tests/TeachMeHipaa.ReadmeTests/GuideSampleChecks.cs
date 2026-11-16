@@ -7,7 +7,7 @@ using static TeachMeHipaa.Tests.Support.Fixtures;
 
 namespace TeachMeHipaa.ReadmeTests;
 
-/// <summary>Checks for the samples that only the guides in docs/guides/ have.</summary>
+/// <summary>Checks for the samples that only the guides in docs/articles/ have.</summary>
 public partial class ReadmeTests
 {
     private const string SubscriptionId = "whs_01JD8K2M4N6P8R0T2V4X6Z8B0D";
