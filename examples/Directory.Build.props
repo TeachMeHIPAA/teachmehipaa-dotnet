@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Settings every example shares, on top of the repository's own. The
+    examples target net8.0, the oldest .NET the library supports with a
+    runnable SDK, and build with the solution, so CI compiles them; nothing
+    runs them.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Needed for IDE0005 (unused usings) on build; examples carry no XML docs. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

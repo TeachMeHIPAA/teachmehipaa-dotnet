@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>TeachMeHipaa</RootNamespace>
+    <AssemblyName>TeachMeHipaa</AssemblyName>
+    <IsTrimmable Condition="'$(TargetFramework)' == 'net8.0'">true</IsTrimmable>
+    <IsAotCompatible Condition="'$(TargetFramework)' == 'net8.0'">true</IsAotCompatible>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <PackageId>TeachMeHipaa</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>TeachMeHIPAA</Authors>
+    <Description>The official .NET client for the TeachMeHIPAA Developer API.</Description>
+    <PackageTags>teachmehipaa;hipaa;training;compliance;api;sdk</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/TeachMeHIPAA/teachmehipaa-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!--
+      The release workflow refuses to push to NuGet while this is true. Set it
+      to false only in the launch PR (see CONTRIBUTING.md, Releasing).
+    -->
+    <PublishGuard>true</PublishGuard>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+    <!-- AddTeachMeHipaa(): the DI extension ships in this package (grilling Q33). -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Bcl.TimeProvider" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>

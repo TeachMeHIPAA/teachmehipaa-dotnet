@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  check:
+    name: Format, build, test (.NET 8 + 10)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # .NET 10 builds everything; the .NET 8 runtime runs the suite against
+      # the library's net8.0 build (CI=true adds the net8.0 test target).
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - run: dotnet restore
+      - run: dotnet format --verify-no-changes --no-restore
+      # The generated services and models must match a fresh run over the vendored IR.
+      - run: dotnet run --project tools/Generator -- --check
+      # The library, tests, tools and the programs in examples/.
+      - run: dotnet build --no-restore --configuration Release
+      # Unit tests, and the README and guide samples and doc links; the
+      # contract suite runs in its own job.
+      - run: dotnet test --no-build --configuration Release
+      - run: dotnet pack src/TeachMeHipaa --no-build --configuration Release --output nupkg
+
+  contract:
+    name: Contract tests (Prism mock of the developer spec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+      # Prism runs through npx.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: dotnet test tests/TeachMeHipaa.ContractTests --configuration Release -p:ContractTests=true

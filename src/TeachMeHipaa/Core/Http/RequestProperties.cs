@@ -1,0 +1,77 @@
+namespace TeachMeHipaa;
+
+/// <summary>
+/// Per-call settings carried on the request itself, so each handler in the
+/// pipeline reads the ones it acts on.
+/// </summary>
+internal static class RequestProperties
+{
+    /// <summary>The caller's <see cref="RequestOptions.Timeout"/>, read by <see cref="TimeoutHandler"/>.</summary>
+    public static readonly RequestProperty<TimeSpan> Timeout = new("TeachMeHipaa.Timeout");
+
+    /// <summary>The caller's <see cref="RequestOptions.MaxRetries"/>, read by <see cref="RetryHandler"/>.</summary>
+    public static readonly RequestProperty<int> MaxRetries = new("TeachMeHipaa.MaxRetries");
+
+    /// <summary>
+    /// The IR's <c>retrySafe</c>: GETs, operations that carry an
+    /// Idempotency-Key, and those idempotent by meaning. Requests without it
+    /// are never retried.
+    /// </summary>
+    public static readonly RequestProperty<bool> RetrySafe = new("TeachMeHipaa.RetrySafe");
+
+    /// <summary>False for public operations, which <see cref="AuthenticationHandler"/> sends without an Access token.</summary>
+    public static readonly RequestProperty<bool> Authenticated = new("TeachMeHipaa.Authenticated");
+
+    /// <summary>
+    /// True for a streamed download: the response comes back once its headers
+    /// arrive and the caller reads the body, so nothing below buffers it.
+    /// </summary>
+    public static readonly RequestProperty<bool> StreamResponse = new("TeachMeHipaa.StreamResponse");
+
+    /// <summary>
+    /// The retries one call has used, shared by every copy of its request so
+    /// that <see cref="AuthenticationHandler"/>'s replay continues the count
+    /// instead of starting a new one.
+    /// </summary>
+    public static readonly RequestReference<RetryBudget> RetryBudget = new("TeachMeHipaa.RetryBudget");
+}
+
+internal sealed class RequestProperty<T>(string name)
+    where T : struct
+{
+#if NET5_0_OR_GREATER
+    private readonly HttpRequestOptionsKey<T> _key = new(name);
+
+    public void Set(HttpRequestMessage request, T value) => request.Options.Set(_key, value);
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Options.TryGetValue(_key, out var value) ? value : null;
+#else
+    public void Set(HttpRequestMessage request, T value) => request.Properties[name] = value;
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Properties.TryGetValue(name, out var value) ? (T?)value : null;
+#endif
+}
+
+/// <summary>
+/// A per-call object on the request. Copies of a request share the same
+/// instance, so a handler that changes it is seen by every later attempt.
+/// </summary>
+internal sealed class RequestReference<T>(string name)
+    where T : class
+{
+#if NET5_0_OR_GREATER
+    private readonly HttpRequestOptionsKey<T> _key = new(name);
+
+    public void Set(HttpRequestMessage request, T value) => request.Options.Set(_key, value);
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Options.TryGetValue(_key, out var value) ? value : null;
+#else
+    public void Set(HttpRequestMessage request, T value) => request.Properties[name] = value;
+
+    public T? Get(HttpRequestMessage request) =>
+        request.Properties.TryGetValue(name, out var value) ? value as T : null;
+#endif
+}

@@ -1,0 +1,48 @@
+// Generated from openapi/sdk-ir.json by tools/Generator. Do not edit.
+// Regenerate with `dotnet run --project tools/Generator`.
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace TeachMeHipaa;
+
+/// <summary>The API's <c>AuditEventCertificateIssued</c> object.</summary>
+/// <remarks>One kind of <see cref="AuditEvent"/>.</remarks>
+public sealed record AuditEventCertificateIssued : AuditEvent
+{
+    /// <summary>The <c>eventId</c> field.</summary>
+    [JsonPropertyName("eventId")]
+    public string EventId { get; init; } = string.Empty;
+
+    /// <summary>The <c>at</c> field.</summary>
+    [JsonPropertyName("at")]
+    public string At { get; init; } = string.Empty;
+
+    /// <summary>Always <c>certificate.issued</c>.</summary>
+    [JsonPropertyName("type")]
+    public string Type { get; } = "certificate.issued";
+
+    /// <summary>The <c>actorSubjectId</c> field.</summary>
+    [JsonPropertyName("actorSubjectId")]
+    public string ActorSubjectId { get; init; } = string.Empty;
+
+    /// <summary>The <c>actor</c> field.</summary>
+    [JsonPropertyName("actor")]
+    public AuditEventActor Actor { get; init; } = null!;
+
+    /// <summary>The <c>certificateId</c> field.</summary>
+    [JsonPropertyName("certificateId")]
+    public string CertificateId { get; init; } = string.Empty;
+
+    /// <summary>The <c>subjectId</c> field.</summary>
+    [JsonPropertyName("subjectId")]
+    public string? SubjectId { get; init; }
+
+    /// <summary>The <c>courseId</c> field.</summary>
+    [JsonPropertyName("courseId")]
+    public string CourseId { get; init; } = string.Empty;
+
+    /// <summary>Fields this version of the library doesn't know yet, kept as sent.</summary>
+    [JsonExtensionData]
+    public IDictionary<string, JsonElement> ExtensionData { get; set; } = new Dictionary<string, JsonElement>();
+}
