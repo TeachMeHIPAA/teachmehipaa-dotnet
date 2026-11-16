@@ -11,14 +11,18 @@ using static TeachMeHipaa.Tests.Support.Fixtures;
 namespace TeachMeHipaa.ReadmeTests;
 
 /// <summary>
-/// What a README sample runs against: the fake transport, the variables
-/// samples presume (<c>client</c>, <c>builder</c>, <c>app</c>), a captured
-/// console and a scratch working directory for the files samples
-/// read and write. Generated sample code reaches it through <see cref="Current"/>.
+/// What a doc sample runs against: the fake transport, the variables
+/// samples presume (<c>client</c>, <c>builder</c>, <c>app</c>,
+/// <c>accessToken</c>, <c>signingSecrets</c>), a captured console and a
+/// scratch working directory for the files samples read and write.
+/// Generated sample code reaches it through <see cref="Current"/>.
 /// </summary>
 public sealed class ReadmeHarness : IAsyncDisposable
 {
     public const string WebhookSecret = "readme-test-signing-secret";
+
+    /// <summary>The token samples hand to <c>StaticTokenProvider</c>.</summary>
+    public string AccessToken { get; } = "tmh_at_readme_static";
 
     private readonly TextWriter _console = Console.Out;
     private readonly StringWriter _output = new();
@@ -59,6 +63,8 @@ public sealed class ReadmeHarness : IAsyncDisposable
 
     public CursorStore Cursors { get; } = new();
 
+    public SigningSecretStore SigningSecrets { get; } = new();
+
     public IReadOnlyList<string> Printed => _output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
     public async ValueTask DisposeAsync()
@@ -82,6 +88,7 @@ public sealed class ReadmeHarness : IAsyncDisposable
         {
             ["TeachMeHipaa:ClientId"] = ClientId,
             ["TeachMeHipaa:ClientSecret"] = ClientSecret,
+            ["TeachMeHipaa:WebhookSecret"] = WebhookSecret,
         });
         return builder;
     }
@@ -129,6 +136,21 @@ public sealed class CursorStore
             }
         }
 
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Stands in for the secret manager a Webhook subscription's Signing secret goes into.</summary>
+public sealed class SigningSecretStore
+{
+    private readonly Dictionary<string, string> _secrets = [];
+
+    public IReadOnlyDictionary<string, string> Secrets => _secrets;
+
+    public Task SaveAsync(string subscriptionId, string secret, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _secrets[subscriptionId] = secret;
         return Task.CompletedTask;
     }
 }

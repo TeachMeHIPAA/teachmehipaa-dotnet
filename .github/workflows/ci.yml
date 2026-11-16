@@ -34,8 +34,10 @@ jobs:
       - run: dotnet format --verify-no-changes --no-restore
       # The generated services and models must match a fresh run over the vendored IR.
       - run: dotnet run --project tools/Generator -- --check
+      # The library, tests, tools and the programs in examples/.
       - run: dotnet build --no-restore --configuration Release
-      # Unit tests and README samples; the contract suite runs in its own job.
+      # Unit tests, and the README and guide samples and doc links; the
+      # contract suite runs in its own job.
       - run: dotnet test --no-build --configuration Release
       - run: dotnet pack src/TeachMeHipaa --no-build --configuration Release --output nupkg
 

@@ -6,8 +6,9 @@ namespace TeachMeHipaa.Generator;
 
 /// <summary>
 /// Turns the vendored SDK IR into the library's generated layer: models,
-/// services, their options and the JSON context. Reads nothing but the IR
-/// and its schema, and produces the same bytes for the same IR.
+/// services, their options and the JSON context, plus the Markdown resource
+/// reference. Reads nothing but the IR and its schema, and produces the same
+/// bytes for the same IR.
 /// </summary>
 public static class SurfaceGenerator
 {
@@ -16,6 +17,9 @@ public static class SurfaceGenerator
 
     /// <summary>The directories the generator owns: it deletes whatever it no longer writes there.</summary>
     public static IReadOnlyList<string> OwnedDirectories { get; } = [ModelsDirectory, ServicesDirectory];
+
+    /// <summary>Single files the generator writes outside its directories.</summary>
+    public static IReadOnlyList<string> OwnedFiles { get; } = [ReferenceWriter.Path];
 
     /// <summary>Repo-relative path → file contents, for every generated file.</summary>
     /// <exception cref="GeneratorException">The IR is invalid or has a shape with no rule here.</exception>
@@ -43,6 +47,7 @@ public static class SurfaceGenerator
         }
 
         files.Add($"{ModelsDirectory}/TeachMeHipaaJsonContext.cs", ContextFile(model, services));
+        files.Add(ReferenceWriter.Path, new ReferenceWriter(ir, model, services).Write());
         return files;
     }
 

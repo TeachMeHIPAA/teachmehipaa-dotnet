@@ -73,3 +73,24 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
   `HttpClient` or `HttpMessageHandler`.
 - `net8.0` (trimmable, AOT-compatible) and `netstandard2.0` targets with
   nullable annotations. No telemetry and no disk writes.
+
+### Documentation
+
+- Guides for partner developers in `docs/guides/`: getting started,
+  authentication, errors and retries, pagination and Events, webhooks,
+  Operations and files, conditional requests, testing, configuration and
+  versioning. Every C# sample in them, as in the README, is compiled and
+  run against a fake of the API in CI, and every relative link in the docs
+  is checked.
+- `docs/reference/resources.md`, generated from the SDK IR by
+  `tools/Generator`: every service and method with its C# signature, HTTP
+  call, Scopes, retry, idempotency and conditional behavior, options and
+  return type, plus the Event types.
+- An API reference built from the XML docs with DocFX, checked for
+  warnings on every pull request and published to GitHub Pages from
+  `main`.
+- Runnable programs in `examples/`: a quickstart, a roster sync by External
+  ID, an ASP.NET Core minimal API webhook endpoint and a Certificate
+  export, compiled in CI.
+- A shorter README with CI and license badges, a pre-release status note
+  and links to the guides, and a docs index in `docs/README.md`.

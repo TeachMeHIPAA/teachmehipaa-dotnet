@@ -57,7 +57,8 @@ public sealed record IrConstraint(IrConstraintKind Kind, IReadOnlyList<string> P
 
 public sealed record IrResponse(IrResponseKind Kind, TypeRef? Type, string? ContentType);
 
-public sealed record IrSecurity(IrSecurityKind Kind);
+/// <summary>A method's security. <c>AnyOf</c> lists alternative Scope sets for a bearer method; an empty set means any Access token.</summary>
+public sealed record IrSecurity(IrSecurityKind Kind, IReadOnlyList<IReadOnlyList<string>>? AnyOf);
 
 public sealed record TypeRef(TypeRefKind Kind, string? Type, string? Name, TypeRef? Items, TypeRef? Values);
 
@@ -77,7 +78,9 @@ public sealed record IrDiscriminator(
     IReadOnlyDictionary<string, string> Mapping,
     string? Fallback);
 
-public sealed record IrEvents(string Envelope, string UnknownEvent);
+public sealed record IrEvents(string Envelope, string UnknownEvent, IReadOnlyList<IrEventEntry> Catalog);
+
+public sealed record IrEventEntry(string Type, TypeRef Data);
 
 /// <summary>An <c>IrType</c>'s <c>kind</c>.</summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1720", Justification = "Named after the IR's kind values.")]

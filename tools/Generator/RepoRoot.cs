@@ -19,7 +19,7 @@ public static class RepoRoot
         throw new DirectoryNotFoundException("TeachMeHipaa.sln not found above the working directory.");
     }
 
-    /// <summary>Every file now in the generator's directories, repo-relative with forward slashes.</summary>
+    /// <summary>Every file now in the generator's directories, and its other files, repo-relative with forward slashes.</summary>
     public static SortedDictionary<string, string> GeneratedFiles(string root)
     {
         var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
@@ -35,6 +35,11 @@ public static class RepoRoot
             {
                 files[Path.GetRelativePath(root, file).Replace('\\', '/')] = File.ReadAllText(file);
             }
+        }
+
+        foreach (var file in SurfaceGenerator.OwnedFiles.Where(file => File.Exists(Path.Combine(root, file))))
+        {
+            files[file] = File.ReadAllText(Path.Combine(root, file));
         }
 
         return files;

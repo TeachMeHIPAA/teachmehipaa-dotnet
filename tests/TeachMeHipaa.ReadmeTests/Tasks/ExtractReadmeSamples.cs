@@ -10,12 +10,13 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 
 /// <summary>
-/// Writes every ```csharp block of the README into one C# file the README
-/// tests compile. Each block must follow a <c>&lt;!-- sample: id --&gt;</c>
-/// line. A block's leading usings go to the top of the file, its statements
-/// into a method named after the id, and any types it declares after them
-/// (as in a top-level program) into the namespace. <c>#line</c> directives
-/// point compiler errors at the README.
+/// Writes every ```csharp block of the README and the guides into one C#
+/// file the doc tests compile. Each block must follow a
+/// <c>&lt;!-- sample: id --&gt;</c> line, with ids unique across all the
+/// documents. A block's leading usings go to the top of the file, its
+/// statements into a method named after the id, and any types it declares
+/// after them (as in a top-level program) into the namespace. <c>#line</c>
+/// directives point compiler errors at the document.
 /// </summary>
 /// <remarks>
 /// Samples run against the test harness's fake transport, so the extractor
@@ -25,7 +26,9 @@ using Microsoft.Build.Utilities;
 /// are declared from <c>ReadmeHarness.Current</c> above its statements.</item>
 /// <item>Each <c>new TeachMeHipaaClientOptions</c> initializer also sets
 /// <c>HttpMessageHandler</c> to the fake, except in samples that use
-/// <c>AddTeachMeHipaa</c>, whose harness configures the factory client.</item>
+/// <c>AddTeachMeHipaa</c>, whose harness configures the factory client, and
+/// samples that bring their own <c>HttpMessageHandler</c> or
+/// <c>HttpClient</c>.</item>
 /// </list>
 /// </remarks>
 public sealed class ExtractReadmeSamples : Task
@@ -43,18 +46,42 @@ public sealed class ExtractReadmeSamples : Task
         new KeyValuePair<string, string>("client", "Client"),
         new KeyValuePair<string, string>("builder", "Builder"),
         new KeyValuePair<string, string>("app", "App"),
+        new KeyValuePair<string, string>("accessToken", "AccessToken"),
+        new KeyValuePair<string, string>("signingSecrets", "SigningSecrets"),
     };
 
     [Required]
-    public string Readme { get; set; } = string.Empty;
+    public ITaskItem[] Documents { get; set; } = Array.Empty<ITaskItem>();
 
     [Required]
     public string Output { get; set; } = string.Empty;
 
     public override bool Execute()
     {
-        var lines = File.ReadAllLines(Readme);
         var samples = new List<Sample>();
+        var documents = Documents.Select(item => Path.GetFullPath(item.ItemSpec)).Distinct().OrderBy(path => path, StringComparer.Ordinal);
+        foreach (var document in documents)
+        {
+            if (!Read(document, samples))
+            {
+                return false;
+            }
+        }
+
+        if (Log.HasLoggedErrors)
+        {
+            return false;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(Output)));
+        File.WriteAllText(Output, Render(samples));
+        return true;
+    }
+
+    private bool Read(string document, List<Sample> samples)
+    {
+        var name = Path.GetFileName(document);
+        var lines = File.ReadAllLines(document);
         for (var i = 0; i < lines.Length; i++)
         {
             if (lines[i] != "```csharp")
@@ -66,33 +93,26 @@ public sealed class ExtractReadmeSamples : Task
             var end = Array.FindIndex(lines, i + 1, line => line == "```");
             if (end < 0)
             {
-                Log.LogError(null, null, null, Readme, i + 1, 0, 0, 0, "README: a ```csharp block is never closed.");
+                Log.LogError(null, null, null, document, i + 1, 0, 0, 0, "{0}: a ```csharp block is never closed.", name);
                 return false;
             }
 
             if (!tag.Success)
             {
-                Log.LogError(null, null, null, Readme, i + 1, 0, 0, 0, "README: a ```csharp block has no <!-- sample: id --> line above it.");
+                Log.LogError(null, null, null, document, i + 1, 0, 0, 0, "{0}: a ```csharp block has no <!-- sample: id --> line above it.", name);
             }
-            else if (samples.Any(sample => sample.Id == tag.Groups[1].Value))
+            else if (samples.FirstOrDefault(sample => sample.Id == tag.Groups[1].Value) is Sample other)
             {
-                Log.LogError(null, null, null, Readme, i, 0, 0, 0, "README: sample id '{0}' is used twice.", tag.Groups[1].Value);
+                Log.LogError(null, null, null, document, i, 0, 0, 0, "{0}: sample id '{1}' is already used in {2}.", name, tag.Groups[1].Value, Path.GetFileName(other.Document));
             }
             else
             {
-                samples.Add(new Sample(tag.Groups[1].Value, i + 2, lines.Skip(i + 1).Take(end - i - 1).ToArray()));
+                samples.Add(new Sample(tag.Groups[1].Value, document, i + 2, lines.Skip(i + 1).Take(end - i - 1).ToArray()));
             }
 
             i = end;
         }
 
-        if (Log.HasLoggedErrors)
-        {
-            return false;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(Output)));
-        File.WriteAllText(Output, Render(samples));
         return true;
     }
 
@@ -121,15 +141,15 @@ public sealed class ExtractReadmeSamples : Task
                 }
             }
 
-            AppendMapped(methods, sample.FirstLine + firstStatement, statements);
+            AppendMapped(methods, sample.Document, sample.FirstLine + firstStatement, statements);
             methods.AppendLine("    }");
             methods.AppendLine();
-            AppendMapped(types, sample.FirstLine + firstType, code.Skip(firstType).ToArray());
+            AppendMapped(types, sample.Document, sample.FirstLine + firstType, code.Skip(firstType).ToArray());
         }
 
         var file = new StringBuilder();
         file.AppendLine("// <auto-generated/>");
-        file.AppendLine("// Generated from README.md by tests/TeachMeHipaa.ReadmeTests/Tasks/ExtractReadmeSamples.cs. Do not edit.");
+        file.AppendLine("// Generated from README.md and docs/guides/*.md by tests/TeachMeHipaa.ReadmeTests/Tasks/ExtractReadmeSamples.cs. Do not edit.");
         file.AppendLine("#nullable enable");
         foreach (var directive in usings.Distinct())
         {
@@ -150,7 +170,7 @@ public sealed class ExtractReadmeSamples : Task
             file.AppendLine("        \"" + sample.Id + "\" => " + MethodName(sample.Id) + "(),");
         }
 
-        file.AppendLine("        _ => throw new ArgumentException(\"No README sample \" + id, nameof(id)),");
+        file.AppendLine("        _ => throw new ArgumentException(\"No doc sample \" + id, nameof(id)),");
         file.AppendLine("    };");
         file.AppendLine();
         file.Append(methods);
@@ -162,7 +182,8 @@ public sealed class ExtractReadmeSamples : Task
 
     private static string[] Rewrite(Sample sample)
     {
-        var injectTransport = !sample.Code.Any(line => line.Contains("AddTeachMeHipaa"));
+        var injectTransport = !sample.Code.Any(line =>
+            line.Contains("AddTeachMeHipaa") || line.Contains("HttpMessageHandler =") || line.Contains("HttpClient ="));
         return sample.Code
             .Select((line, index) =>
                 injectTransport && line.Trim() == "{" && index > 0 && OptionsInitializer.IsMatch(sample.Code[index - 1].TrimEnd())
@@ -189,14 +210,14 @@ public sealed class ExtractReadmeSamples : Task
         return index;
     }
 
-    private void AppendMapped(StringBuilder builder, int readmeLine, string[] code)
+    private static void AppendMapped(StringBuilder builder, string document, int firstLine, string[] code)
     {
         if (code.All(line => line.Trim().Length == 0))
         {
             return;
         }
 
-        builder.AppendLine("#line " + readmeLine + " \"" + Readme + "\"");
+        builder.AppendLine("#line " + firstLine + " \"" + document + "\"");
         foreach (var line in code)
         {
             builder.AppendLine(line);
@@ -210,16 +231,19 @@ public sealed class ExtractReadmeSamples : Task
 
     private sealed class Sample
     {
-        public Sample(string id, int firstLine, string[] code)
+        public Sample(string id, string document, int firstLine, string[] code)
         {
             Id = id;
+            Document = document;
             FirstLine = firstLine;
             Code = code;
         }
 
         public string Id { get; }
 
-        // The README line number of the block's first line of code.
+        public string Document { get; }
+
+        // The document's line number of the block's first line of code.
         public int FirstLine { get; }
 
         public string[] Code { get; }

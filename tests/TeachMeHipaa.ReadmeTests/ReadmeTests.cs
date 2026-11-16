@@ -9,10 +9,12 @@ using static TeachMeHipaa.Tests.Support.Fixtures;
 namespace TeachMeHipaa.ReadmeTests;
 
 /// <summary>
-/// Runs every README sample against the fake transport and checks what it
-/// printed and sent. That the samples compile is checked by the build.
+/// Runs every sample in the README and the guides against the fake
+/// transport and checks what it printed and sent. That the samples compile
+/// is checked by the build. Checks for the guides' own samples are in
+/// GuideSampleChecks.cs.
 /// </summary>
-public class ReadmeTests
+public partial class ReadmeTests
 {
     private const string Org = $"/v1/organizations/{OrgId}";
     private const string RequestId = "req_7f3c2a";
@@ -36,23 +38,55 @@ public class ReadmeTests
 
     private static readonly IReadOnlyDictionary<string, Func<ReadmeHarness, Task>> Checks = new Dictionary<string, Func<ReadmeHarness, Task>>
     {
+        // README.md
         ["quickstart"] = Quickstart,
+
+        // docs/guides/getting-started.md
+        ["first-call"] = FirstCall,
+        ["learner-writes"] = LearnerWrites,
         ["dependency-injection"] = DependencyInjection,
         ["dependency-injection-endpoint"] = DependencyInjection,
+
+        // docs/guides/authentication.md
+        ["client-credentials"] = ClientCredentials,
         ["organization"] = Organization,
+        ["static-token"] = StaticToken,
         ["public-lookups"] = PublicLookups,
-        ["learner-writes"] = LearnerWrites,
-        ["pagination"] = Pagination,
+
+        // docs/guides/errors-and-retries.md
         ["errors"] = Errors,
         ["request-options"] = RequestOptions,
+
+        // docs/guides/pagination-and-events.md
+        ["pagination"] = Pagination,
+        ["events-list"] = EventsList,
+        ["events-tail"] = EventsTail,
+
+        // docs/guides/webhooks.md
+        ["webhook-subscription-create"] = WebhookSubscriptionCreate,
+        ["delivery-aspnetcore"] = DeliveryAspNetCore,
+        ["delivery-controller"] = DeliveryController,
+        ["webhook-test-delivery"] = WebhookTestDelivery,
+        ["delivery-test-headers"] = DeliveryTestHeaders,
+
+        // docs/guides/operations-and-files.md
+        ["operations"] = Operations,
+        ["certificates-export"] = CertificatesExport,
+        ["csv-import"] = CsvImport,
+        ["pdf-download"] = PdfDownload,
+
+        // docs/guides/conditional-requests.md
         ["conditional-write"] = ConditionalWrite,
         ["not-modified"] = NotModified,
-        ["operations"] = Operations,
-        ["files"] = Files,
-        ["delivery-aspnetcore"] = DeliveryAspNetCore,
-        ["delivery-test-headers"] = DeliveryTestHeaders,
-        ["events-tail"] = EventsTail,
+
+        // docs/guides/testing.md
+        ["fake-transport"] = FakeTransport,
+        ["webhook-handler-test"] = WebhookHandlerTest,
+
+        // docs/guides/configuration.md
         ["configuration"] = Configuration,
+        ["timeouts"] = Timeouts,
+        ["http-handler"] = HttpHandler,
         ["logging"] = Logging,
     };
 
@@ -246,18 +280,35 @@ public class ReadmeTests
             .Script(TokenRoute, TokenReply())
             .Script($"POST {Org}/learners:export", DoneOperation(
                 "learners.export",
-                $$"""{"format":"csv","contentType":"text/csv","filename":"learners.csv","rowCount":2,"dataBase64":"{{Convert.ToBase64String(Encoding.UTF8.GetBytes(csv))}}"}"""))
-            .Script($"POST {Org}/webhook-subscriptions/whs_01JD8D:test", DoneOperation("webhooks.test", """{"_tag":"sent","responseStatus":200}"""));
+                $$"""{"format":"csv","contentType":"text/csv","filename":"learners.csv","rowCount":2,"dataBase64":"{{Convert.ToBase64String(Encoding.UTF8.GetBytes(csv))}}"}"""));
 
         await ReadmeSamples.RunAsync("operations");
 
-        Assert.Equal([$"learners.csv 2 {csv.Length}", "delivered: 200"], readme.Printed);
+        Assert.Equal([$"learners.csv 2 {csv.Length}"], readme.Printed);
         AssertJson(
             """{"format":"csv","courseId":"hipaa-2026"}""",
             Assert.Single(readme.Handler.RequestsTo($"POST {Org}/learners:export")).Body);
     }
 
-    private static async Task Files(ReadmeHarness readme)
+    private static async Task CsvImport(ReadmeHarness readme)
+    {
+        File.WriteAllText("roster.csv", "email,name\nana@example.com,Ana Example\n");
+        readme.Handler
+            .Script(TokenRoute, TokenReply())
+            .Script(
+                $"POST {Org}/enrollments:import",
+                Json("""{"totalRows":3,"validRows":2,"seatsRequired":2,"seatsAvailable":10,"rows":[]}"""),
+                DoneOperation("enrollments.import", "null"));
+
+        await ReadmeSamples.RunAsync("csv-import");
+
+        Assert.Equal(["2 of 3 rows are valid"], readme.Printed);
+        var imports = readme.Handler.RequestsTo($"POST {Org}/enrollments:import");
+        Assert.Equal(2, imports.Count);
+        Assert.All(imports, request => Assert.Contains("ana@example.com,Ana Example", request.Body, StringComparison.Ordinal));
+    }
+
+    private static async Task PdfDownload(ReadmeHarness readme)
     {
         var pdf = "%PDF-1.7 certificate"u8.ToArray();
         var pdfReply = new ScriptedReply
@@ -269,21 +320,12 @@ public class ReadmeTests
                 ["Content-Disposition"] = "attachment; filename=\"certificate-cert_01JD8F.pdf\"",
             },
         };
-        File.WriteAllText("roster.csv", "email,name\nana@example.com,Ana Example\n");
         readme.Handler
             .Script(TokenRoute, TokenReply())
-            .Script(
-                $"POST {Org}/enrollments:import",
-                Json("""{"totalRows":3,"validRows":2,"seatsRequired":2,"seatsAvailable":10,"rows":[]}"""),
-                DoneOperation("enrollments.import", "null"))
             .Script($"GET {Org}/certificates/cert_01JD8F/content", pdfReply, pdfReply);
 
-        await ReadmeSamples.RunAsync("files");
+        await ReadmeSamples.RunAsync("pdf-download");
 
-        Assert.Equal(["2 of 3 rows are valid"], readme.Printed);
-        Assert.All(
-            readme.Handler.RequestsTo($"POST {Org}/enrollments:import"),
-            request => Assert.Contains("ana@example.com,Ana Example", request.Body, StringComparison.Ordinal));
         Assert.Equal(pdf, File.ReadAllBytes("certificate-cert_01JD8F.pdf"));
         Assert.Equal(pdf, File.ReadAllBytes("certificate-copy.pdf"));
     }

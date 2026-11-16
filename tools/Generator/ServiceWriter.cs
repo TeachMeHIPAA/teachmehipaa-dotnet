@@ -28,6 +28,12 @@ internal sealed class ServiceWriter
     /// <summary>Options classes sent as JSON and the pages returned, for the JSON context.</summary>
     public IEnumerable<string> SerializedTypes => _plan.SerializedTypes;
 
+    /// <summary>The plan the services are written from, for the Markdown reference.</summary>
+    internal ServicePlanner Plan => _plan;
+
+    /// <summary>The C# type a method's task returns.</summary>
+    internal string ReturnType(MethodPlan plan) => Response(plan).ReturnType;
+
     public IEnumerable<(string Name, string Contents)> Files()
     {
         foreach (var node in _plan.Roots.Values.SelectMany(root => root.Walk()))

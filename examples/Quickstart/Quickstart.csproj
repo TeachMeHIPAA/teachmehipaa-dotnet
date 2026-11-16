@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- From a NuGet install, this becomes <PackageReference Include="TeachMeHipaa" />. -->
+    <ProjectReference Include="..\..\src\TeachMeHipaa\TeachMeHipaa.csproj" />
+  </ItemGroup>
+
+</Project>

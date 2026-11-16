@@ -1,3 +1,6 @@
 # Written by tools/Generator from openapi/sdk-ir.json; collapsed in diffs.
 src/TeachMeHipaa/Models/** linguist-generated=true
 src/TeachMeHipaa/Services/** linguist-generated=true
+
+# Written by tools/Generator from openapi/sdk-ir.json, like the code above.
+docs/reference/resources.md linguist-generated=true
