@@ -3,7 +3,7 @@
 Small programs that use the library against the Sandbox. Each reads an API
 client's credentials from `TMH_CLIENT_ID` and `TMH_CLIENT_SECRET` (create
 one in the Sandbox Environment; see
-[Authenticate the client](../docs/articles/authenticate.md)). They build with the
+[the docs](https://docs.teachmehipaa.com/api?lang=dotnet)). They build with the
 solution, so CI compiles them, but CI doesn't run them.
 
 | Example                                               | What it does                                                            |

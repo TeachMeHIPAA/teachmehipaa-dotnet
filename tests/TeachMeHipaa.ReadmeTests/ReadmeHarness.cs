@@ -13,7 +13,7 @@ namespace TeachMeHipaa.ReadmeTests;
 /// <summary>
 /// What a doc sample runs against: the fake transport, the variables
 /// samples presume (<c>client</c>, <c>builder</c>, <c>app</c>,
-/// <c>accessToken</c>, <c>signingSecrets</c>), a captured console and a
+/// <c>accessToken</c>), a captured console and a
 /// scratch working directory for the files samples read and write.
 /// Generated sample code reaches it through <see cref="Current"/>.
 /// </summary>
@@ -61,10 +61,6 @@ public sealed class ReadmeHarness : IAsyncDisposable
 
     public WebApplication App => _app ??= Builder.Build();
 
-    public CursorStore Cursors { get; } = new();
-
-    public SigningSecretStore SigningSecrets { get; } = new();
-
     public IReadOnlyList<string> Printed => _output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
     public async ValueTask DisposeAsync()
@@ -91,66 +87,5 @@ public sealed class ReadmeHarness : IAsyncDisposable
             ["TeachMeHipaa:WebhookSecret"] = WebhookSecret,
         });
         return builder;
-    }
-}
-
-/// <summary>Stands in for where an Event log follower keeps its position.</summary>
-public sealed class CursorStore
-{
-    private readonly List<string?> _saved = [];
-    private readonly TaskCompletionSource _enoughSaved = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    public string? Cursor { get; set; }
-
-    /// <summary>How many saves <see cref="EnoughSaved"/> waits for.</summary>
-    public int Expected { get; set; } = int.MaxValue;
-
-    public IReadOnlyList<string?> Saved
-    {
-        get
-        {
-            lock (_saved)
-            {
-                return [.. _saved];
-            }
-        }
-    }
-
-    public Task EnoughSaved => _enoughSaved.Task;
-
-    public Task<string?> LoadAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(Cursor);
-    }
-
-    public Task SaveAsync(string? eventId, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        lock (_saved)
-        {
-            _saved.Add(eventId);
-            if (_saved.Count >= Expected)
-            {
-                _enoughSaved.TrySetResult();
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>Stands in for the secret manager a Webhook subscription's Signing secret goes into.</summary>
-public sealed class SigningSecretStore
-{
-    private readonly Dictionary<string, string> _secrets = [];
-
-    public IReadOnlyDictionary<string, string> Secrets => _secrets;
-
-    public Task SaveAsync(string subscriptionId, string secret, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        _secrets[subscriptionId] = secret;
-        return Task.CompletedTask;
     }
 }
