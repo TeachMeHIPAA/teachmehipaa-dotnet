@@ -95,6 +95,8 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
 - A shorter README with CI and license badges, a pre-release status note
   and links to the guides, and a docs index in `docs/README.md`.
 - `docs/reference/code-samples.json`, one generated and compiled C#
-  program per API operation for the API reference; the guides moved to
-  `docs/articles/` (a quickstart, eleven how-to guides and a concepts
-  page) and DocFX now publishes them beside the API reference.
+  program per API operation for the API reference.
+- The guides, the generated resource reference and the DocFX site on
+  GitHub Pages are gone; the documentation lives at
+  [docs.teachmehipaa.com/api](https://docs.teachmehipaa.com/api?lang=dotnet),
+  which `code-samples.json` feeds.

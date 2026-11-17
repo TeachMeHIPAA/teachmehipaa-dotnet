@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Keeps the README and the guides in docs/articles honest. Before compiling,
+    Keeps the README honest. Before compiling,
     Tasks/ExtractReadmeSamples.cs turns every ```csharp block in README.md
-    and docs/articles/*.md into a method (or, for a block that declares types,
+    into a method (or, for a block that declares types,
     those types) in obj/ReadmeSamples.g.cs, so a sample that no longer
     compiles fails the build, pointing at its line in the document.
     ReadmeTests.cs then runs each sample against the fake transport,
@@ -23,11 +23,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <DocSample Include="$(DocsRoot)README.md;$(DocsRoot)docs/articles/*.md" />
+    <DocSample Include="$(DocsRoot)README.md" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The webhook and dependency injection samples are ASP.NET Core code. -->
+    <!-- The harness can host ASP.NET Core samples in memory. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.8" />
     <!-- CodeSampleTests compiles docs/reference/code-samples.json with Roslyn. -->

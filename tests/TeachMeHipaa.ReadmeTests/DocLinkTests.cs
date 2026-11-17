@@ -16,12 +16,7 @@ public partial class DocLinkTests
         "README.md",
         "CONTRIBUTING.md",
         "docs/README.md",
-        "docs/docfx/index.md",
-        "docs/reference/resources.md",
         "examples/README.md",
-        .. Directory.EnumerateFiles(Path.Combine(Root, "docs", "articles"), "*.md")
-            .Select(path => Path.GetRelativePath(Root, path).Replace('\\', '/'))
-            .Order(StringComparer.Ordinal),
     ];
 
     [Theory]

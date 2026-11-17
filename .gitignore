@@ -7,6 +7,3 @@ TestResults/
 *.nupkg
 *.snupkg
 
-# DocFX output (`dotnet docfx docs/docfx/docfx.json`)
-docs/docfx/api/
-docs/docfx/_site/
